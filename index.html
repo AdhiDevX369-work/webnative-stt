@@ -3,341 +3,636 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Native Web STT Studio — Browser Speech Recognition</title>
-  <meta name="description" content="Test and explore native browser Speech-to-Text (Web Speech API) with live audio visualization, multi-language support (Sinhala, English, Tamil & more), real-time confidence scores, and transcript export." />
-  <meta name="theme-color" content="#0a0d14" />
+  <title>Curie AI Chat — Voice & CRM Intelligence Studio</title>
+  <meta name="description" content="Curie AI Chat with native Web Speech STT, multi-language speech recognition (Sinhala, English, Tamil & more), CRM automation, and live speech transcription." />
+  <meta name="theme-color" content="#0f172a" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./style.css" />
 </head>
-<body>
-  <div class="app-background">
-    <div class="bg-glow glow-1"></div>
-    <div class="bg-glow glow-2"></div>
-    <div class="bg-glow glow-3"></div>
-  </div>
+<body class="curie-theme">
 
-  <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-brand">
-        <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="22"></line>
-            <line x1="8" y1="22" x2="16" y2="22"></line>
-          </svg>
-        </div>
-        <div class="brand-text">
-          <h1>EchoNative <span class="badge-tag">STT Studio</span></h1>
-          <p class="tagline">Native Browser Speech-to-Text Playground</p>
-        </div>
-      </div>
+  <!-- Main Application Wrapper -->
+  <div class="app-layout">
+    
+    <!-- 1. Left Vertical Rail Sidebar -->
+    <aside class="rail-sidebar" aria-label="Main Navigation Rail">
+      <div class="rail-top">
+        <button id="railHomeBtn" class="rail-btn active" title="Curie AI Chat" aria-label="Home">
+          <div class="rail-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+        </button>
+        
+        <button id="railNewChatBtn" class="rail-btn" title="New Chat / Consultation (+)" aria-label="New Chat">
+          <div class="rail-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="4"></rect>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+          </div>
+        </button>
 
-      <div class="header-actions">
-        <div id="networkStatusBadge" class="network-badge online" title="Network status (App works offline via Service Worker & On-device Speech Engine)">
-          <span class="network-dot"></span>
-          <span class="network-text" id="networkStatusText">Online</span>
-        </div>
-        <div id="browserSupportBadge" class="support-badge checking">
-          <span class="status-dot"></span>
-          <span class="status-text">Checking API Support...</span>
-        </div>
-        <button id="toggleDiagnosticsBtn" class="btn btn-secondary btn-icon-text" title="Toggle Diagnostics Log">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="4 17 10 11 4 5"></polyline>
-            <line x1="12" y1="19" x2="20" y2="19"></line>
-          </svg>
-          <span>Diagnostics</span>
-          <span id="logCountBadge" class="pill-badge">0</span>
+        <button id="railHistoryBtn" class="rail-btn" title="Consultations & Records" aria-label="History">
+          <div class="rail-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
         </button>
       </div>
-    </header>
 
-    <!-- Browser Warning Banner (Hidden by default) -->
-    <div id="unsupportedBanner" class="alert-banner hidden">
-      <div class="alert-icon">⚠️</div>
-      <div class="alert-content">
-        <strong>Speech Recognition Not Supported in this Browser!</strong>
-        <p>The Web Speech API (<code>SpeechRecognition</code> / <code>webkitSpeechRecognition</code>) works best in <strong>Google Chrome, Microsoft Edge, Safari, and Brave</strong>. Please switch to a supported browser to test speech-to-text.</p>
+      <div class="rail-bottom">
+        <button id="railSettingsBtn" class="rail-btn" title="Settings & STT Engine" aria-label="Settings">
+          <div class="rail-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+        </button>
       </div>
+    </aside>
+
+    <!-- 2. Main Viewport Area -->
+    <div class="main-viewport">
+      
+      <!-- Top Navigation Bar -->
+      <header class="top-navbar">
+        <!-- Brand Title -->
+        <div class="nav-brand">
+          <div class="curie-logo-circle">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"></path>
+            </svg>
+          </div>
+          <span class="brand-title">CURIE AI CHAT</span>
+        </div>
+
+        <!-- Top Right Actions & Controls -->
+        <div class="nav-right-controls">
+          <!-- General Department Dropdown -->
+          <div class="dept-selector-wrapper">
+            <label for="departmentSelect" class="dept-label">General Department</label>
+            <div class="dept-select-box">
+              <select id="departmentSelect" class="dept-select">
+                <option value="all" selected>All</option>
+                <option value="cardiology">Cardiology</option>
+                <option value="radiology">Radiology</option>
+                <option value="pediatrics">Pediatrics</option>
+                <option value="general">General Medicine</option>
+                <option value="pharmacy">Pharmacy</option>
+                <option value="billing">Billing & Claims</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Patient Search Bar (CTRL+P) -->
+          <div class="patient-search-container" id="patientSearchTrigger">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="patientSearchInput" class="patient-search-input" placeholder="Search Patient (CTRL+P)" readonly />
+            <kbd class="search-kbd-badge">Ctrl+P</kbd>
+          </div>
+
+          <!-- Currency Action Button -->
+          <button id="billingActionBtn" class="nav-icon-pill green-pill" title="Billing & Claims Summary" aria-label="Billing">
+            <span>$</span>
+          </button>
+
+          <!-- Settings Gear Button -->
+          <button id="topSettingsBtn" class="nav-icon-btn" title="Open STT Settings & Controls" aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+
+          <!-- Flame / Diagnostics Button -->
+          <button id="toggleDiagnosticsBtn" class="nav-icon-btn" title="View Web Speech API Event Diagnostics" aria-label="Diagnostics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"></path>
+            </svg>
+            <span id="logCountBadge" class="nav-badge-dot hidden">0</span>
+          </button>
+
+          <!-- User Profile Capsule -->
+          <div class="user-profile-capsule">
+            <div class="user-avatar-circle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="user-info-text">
+              <span class="user-name">ehr_test</span>
+              <span class="user-subtitle">Avenir SS <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></span>
+            </div>
+            <button id="logoutBtn" class="power-logout-btn" title="Sign Out" aria-label="Sign Out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                <line x1="12" y1="2" x2="12" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Unsupported Browser Warning (Hidden by default) -->
+      <div id="unsupportedBanner" class="curie-banner hidden">
+        <div class="banner-icon">⚠️</div>
+        <div class="banner-text">
+          <strong>Speech Recognition Not Supported in this Browser!</strong>
+          <p>Please switch to <strong>Google Chrome, Microsoft Edge, Safari, or Brave</strong> to use Web Speech API.</p>
+        </div>
+      </div>
+
+      <!-- Main Workspace Card Container -->
+      <div class="workspace-card-wrapper">
+        <div class="curie-main-card">
+          
+          <!-- Top Left Hamburger Menu (Toggles Side Panel Drawer) -->
+          <button id="drawerToggleBtn" class="hamburger-menu-btn" title="Toggle Side Panel (History & Settings)" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Status Indicator Floating Pill -->
+          <div class="header-status-pill">
+            <div id="networkStatusBadge" class="network-badge online">
+              <span class="network-dot"></span>
+              <span class="network-text" id="networkStatusText">Online</span>
+            </div>
+            <div id="browserSupportBadge" class="support-badge checking">
+              <span class="status-dot"></span>
+              <span class="status-text">Web Speech API</span>
+            </div>
+          </div>
+
+          <!-- Central Content Area (Hero + Chat Feed) -->
+          <div class="curie-content-scroll" id="chatContentScroll">
+            
+            <!-- Hero View: Active when starting fresh -->
+            <div class="curie-hero-view" id="curieHeroView">
+              <h1 class="hero-headline">What would you like to know today?</h1>
+              <p class="hero-subline">Hold the mic and talk. Your speech becomes editable text — review it, then send.</p>
+
+              <div class="suggestions-section">
+                <span class="suggestions-tag">SUGGESTIONS FOR YOU</span>
+                
+                <div class="suggestions-list">
+                  <button type="button" class="suggestion-pill-btn" data-query="Show me my pending POs awaiting approval">
+                    Show me my pending POs awaiting approval
+                  </button>
+                  
+                  <button type="button" class="suggestion-pill-btn" data-query="Show me which POs to tackle first">
+                    Show me which POs to tackle first
+                  </button>
+                  
+                  <button type="button" class="suggestion-pill-btn" data-query="Group similar POs for faster processing">
+                    Group similar POs for faster processing
+                  </button>
+                  
+                  <button type="button" class="suggestion-pill-btn" data-query="Pointing out duplicate items across pending POs">
+                    Pointing out duplicate items across pending POs
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Chat / Transcription Stream (Renders dynamically) -->
+            <div class="chat-messages-stream hidden" id="chatMessagesStream">
+              <!-- Dynamically populated with chat bubbles and transcript entries -->
+            </div>
+
+            <!-- Live Speech Stream Bubble (Appears while user speaks) -->
+            <div class="live-voice-stream-bar hidden" id="liveVoiceStreamBar">
+              <div class="live-stream-header-strip">
+                <span class="live-pulse-badge">
+                  <span class="pulse-dot"></span> <span id="micStatusText">Listening...</span>
+                </span>
+                <span class="confidence-badge" id="liveConfidence">Ready</span>
+              </div>
+              <div class="live-stream-content" id="liveStreamText">
+                <span class="placeholder-text">Speak into your microphone...</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Waveform Visualizer Canvas (Discreetly sits behind or inside the bottom bar) -->
+          <div class="subtle-waveform-wrapper">
+            <canvas id="waveformCanvas" height="36"></canvas>
+            <div id="visualizerOverlay" class="hidden"></div>
+          </div>
+
+          <!-- Bottom Floating Input Bar (Pill Shape) -->
+          <div class="floating-input-container">
+            <div class="floating-pill-bar">
+              
+              <!-- Textarea / Input -->
+              <textarea 
+                id="chatTextInput" 
+                class="pill-textarea" 
+                rows="1" 
+                placeholder="Type your message..."
+                aria-label="Message Input"
+              ></textarea>
+
+              <!-- Hidden backing textarea for legacy transcript area syncing -->
+              <textarea id="finalTranscriptArea" class="hidden"></textarea>
+
+              <!-- Right Action Controls inside Pill -->
+              <div class="pill-actions-group">
+                
+                <!-- AH CRM Tag / Toggle Pill -->
+                <button type="button" id="crmModeToggleBtn" class="ah-crm-pill" title="Toggle CRM Context & STT API Source">
+                  <span class="crm-text-bold">AH</span>
+                  <span class="crm-text-sub">CRM</span>
+                </button>
+
+                <!-- Microphone Button (Click-to-Toggle or Hold-to-Talk) -->
+                <div class="mic-button-housing">
+                  <div class="mic-wave-pulse wave-1"></div>
+                  <div class="mic-wave-pulse wave-2"></div>
+                  <button id="micButton" class="curie-mic-btn" aria-label="Speech to Text (Hold or Click to talk)" title="Hold or click to talk">
+                    <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                      <line x1="12" y1="19" x2="12" y2="22"></line>
+                      <line x1="8" y1="22" x2="16" y2="22"></line>
+                    </svg>
+                    <svg id="micStopIcon" class="hidden" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Send Action Button -->
+                <button id="sendChatBtn" class="curie-send-btn" aria-label="Send Message" title="Send Message">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                  </svg>
+                </button>
+
+                <!-- Hidden Send to API button to wire up backend calls -->
+                <button id="sendToApiBtn" class="hidden"></button>
+
+              </div>
+            </div>
+
+            <!-- Hint below input -->
+            <div class="input-sub-hint" id="micHintText">
+              Press & hold or click mic to dictate in <span id="currentLangTag">si-LK (Sinhala)</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
 
-    <!-- Main Grid Layout -->
-    <main class="main-layout">
-      <!-- Left Column: Controls & Visualizer -->
-      <section class="panel control-panel">
-        <div class="panel-header">
-          <h2>Configuration & Input</h2>
-          <span class="panel-subtitle">Recognition settings & language selection</span>
+    <!-- 3. Collapsible Side Panel Drawer -->
+    <aside class="side-panel-drawer" id="sidePanelDrawer" aria-label="Curie Side Panel">
+      <div class="drawer-header-curie">
+        <div class="drawer-header-title">
+          <div class="drawer-logo-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </div>
+          <h3>Curie Control Center</h3>
         </div>
+        <button id="closeSidePanelBtn" class="close-drawer-btn" aria-label="Close Side Panel">✕</button>
+      </div>
 
-        <!-- Language Quick Pick -->
-        <div class="setting-group">
-          <label class="setting-label">
-            <span>Language / භාෂාව</span>
-            <span class="selected-lang-display" id="currentLangTag">si-LK (සිංහල)</span>
-          </label>
-          <div class="quick-lang-pills">
-            <button type="button" class="lang-pill active" data-lang="si-LK">සිංහල (Sinhala)</button>
-            <button type="button" class="lang-pill" data-lang="en-US">English (US)</button>
-            <button type="button" class="lang-pill" data-lang="en-IN">English (India)</button>
-            <button type="button" class="lang-pill" data-lang="ta-LK">தமிழ் (Tamil)</button>
-          </div>
-          <div class="select-wrapper">
-            <select id="languageSelect" class="custom-select">
-              <!-- Dynamically populated via app.js -->
-            </select>
-          </div>
-        </div>
+      <!-- Drawer Tabs Navigation -->
+      <div class="drawer-nav-tabs">
+        <button class="drawer-tab-btn active" data-drawer-tab="history">
+          <span>📁 Consultations</span>
+        </button>
+        <button class="drawer-tab-btn" data-drawer-tab="settings">
+          <span>⚙️ Voice & STT</span>
+        </button>
+        <button class="drawer-tab-btn" data-drawer-tab="api">
+          <span>🌐 API & CRM</span>
+        </button>
+        <button class="drawer-tab-btn" data-drawer-tab="metrics">
+          <span>📊 Metrics</span>
+        </button>
+      </div>
 
-        <!-- Recognition Options -->
-        <div class="settings-grid">
-          <div class="setting-card">
-            <div class="setting-info">
-              <span class="setting-title">Continuous Listening</span>
-              <span class="setting-desc">Keep listening without auto-stopping</span>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="continuousToggle" checked />
-              <span class="slider"></span>
-            </label>
+      <!-- Drawer Body Content -->
+      <div class="drawer-scroll-body">
+        
+        <!-- Tab 1: Consultations / History -->
+        <div class="drawer-section-tab active" id="drawerHistoryTab">
+          <div class="section-title-strip">
+            <span>Recent Consultations & Audio Sessions</span>
+            <button id="clearBtn" class="btn-text-danger" title="Clear all history">Clear</button>
           </div>
 
-          <div class="setting-card">
-            <div class="setting-info">
-              <span class="setting-title">Interim Results</span>
-              <span class="setting-desc">Real-time live typing preview</span>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="interimToggle" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-card">
-            <div class="setting-info">
-              <span class="setting-title">Auto-Reconnection</span>
-              <span class="setting-desc">Auto restart if browser silences recognition</span>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="autoRestartToggle" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-card">
-            <div class="setting-info">
-              <span class="setting-title">Audio Waveform</span>
-              <span class="setting-desc">Connect live mic via Web Audio API</span>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="visualizerToggle" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- API Integration Setting -->
-        <div class="setting-group" style="margin-top: 1rem; margin-bottom: 0.5rem;">
-          <label class="setting-label">
-            <span>API STT Endpoint</span>
-            <span class="badge-tag" style="background: rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.3); color: #67e8f9;">POST</span>
-          </label>
-          <div class="select-wrapper">
-            <input type="text" id="apiEndpointInput" class="custom-select" style="background-image: none; padding-right: 1rem; font-family: 'JetBrains Mono', monospace;" value="http://localhost:8000/api/stt" placeholder="http://localhost:8000/api/stt" />
-          </div>
-        </div>
-
-        <!-- API Authorization Key -->
-        <div class="setting-group" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
-          <label class="setting-label">
-            <span>Authorization Key (Bearer Token)</span>
-          </label>
-          <div class="select-wrapper">
-            <input type="text" id="apiAuthKeyInput" class="custom-select" style="background-image: none; padding-right: 1rem; font-family: 'JetBrains Mono', monospace;" value="" placeholder="Enter bearer token..." />
-          </div>
-        </div>
-
-        <!-- API Configuration Additional Options -->
-        <div class="settings-grid" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
-          <div class="setting-card">
-            <div class="setting-info">
-              <span class="setting-title">Auto-Send on Stop</span>
-              <span class="setting-desc">Send to API when recording ends</span>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="apiAutoSendToggle" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-card">
-            <div class="setting-info">
-              <span class="setting-title">API Source</span>
-              <span class="setting-desc">Identifier label</span>
-            </div>
-            <input type="text" id="apiSourceInput" class="custom-select" value="CRM" style="background-image: none; width: 60px; padding: 0.3rem; text-align: center; font-size: 0.8rem; font-family: 'Outfit', sans-serif;" />
-          </div>
-        </div>
-
-        <!-- Hero Mic Interaction Station -->
-        <div class="mic-station">
-          <div class="visualizer-container">
-            <canvas id="waveformCanvas"></canvas>
-            <div class="visualizer-overlay" id="visualizerOverlay">
-              <span>Waveform visualizer ready</span>
-            </div>
-          </div>
-
-          <div class="mic-action-area">
-            <div class="mic-button-wrapper">
-              <div class="mic-ripple ring-1"></div>
-              <div class="mic-ripple ring-2"></div>
-              <div class="mic-ripple ring-3"></div>
-              <button id="micButton" class="mic-btn" aria-label="Start Voice Recognition">
-                <div class="mic-icon-inner">
-                  <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="22"></line>
-                    <line x1="8" y1="22" x2="16" y2="22"></line>
-                  </svg>
-                  <svg id="micStopIcon" class="hidden" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-                  </svg>
-                </div>
-              </button>
+          <div class="session-history-list" id="sessionHistoryList">
+            <div class="session-history-item active" data-session-id="current">
+              <div class="history-item-icon">💬</div>
+              <div class="history-item-details">
+                <span class="history-item-title">Current Voice Consultation</span>
+                <span class="history-item-time">Active now</span>
+              </div>
             </div>
             
-            <div class="mic-status-container">
-              <div class="mic-status-label" id="micStatusText">Click Microphone to Start</div>
-              <div class="mic-hint-text" id="micHintText">Ensure microphone permissions are allowed</div>
+            <div class="session-history-item" data-session-id="po-approval">
+              <div class="history-item-icon">📋</div>
+              <div class="history-item-details">
+                <span class="history-item-title">Pending POs Approval Inquiry</span>
+                <span class="history-item-time">Today, 08:30 AM</span>
+              </div>
+            </div>
+
+            <div class="session-history-item" data-session-id="patient-consult">
+              <div class="history-item-icon">🩺</div>
+              <div class="history-item-details">
+                <span class="history-item-title">Cardiology Patient Check - #4092</span>
+                <span class="history-item-time">Yesterday, 04:15 PM</span>
+              </div>
             </div>
           </div>
 
-          <!-- Live Metrics Strip -->
-          <div class="metrics-strip">
-            <div class="metric-item">
-              <span class="metric-label">Session Duration</span>
-              <span class="metric-value font-mono" id="durationTimer">00:00</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Words</span>
-              <span class="metric-value font-mono" id="wordCount">0</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Characters</span>
-              <span class="metric-value font-mono" id="charCount">0</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Avg Confidence</span>
-              <span class="metric-value font-mono" id="avgConfidence">--</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Right Column: Transcripts & Actions -->
-      <section class="panel transcript-panel">
-        <div class="panel-header">
-          <div class="header-with-tabs">
-            <h2>Transcribed Output</h2>
-            <div class="view-tabs">
-              <button class="tab-btn active" data-tab="full">Full Editor</button>
-              <button class="tab-btn" data-tab="timeline">Timeline History</button>
-            </div>
-          </div>
-          <div class="action-buttons-group">
-            <button id="copyBtn" class="btn btn-secondary btn-sm" title="Copy to Clipboard">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
+          <!-- Actions toolbar -->
+          <div class="drawer-export-strip">
+            <button id="copyBtn" class="curie-pill-action" title="Copy text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
               <span>Copy</span>
             </button>
-            <button id="ttsBtn" class="btn btn-secondary btn-sm" title="Listen with Native Speech Synthesis">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              </svg>
+
+            <button id="ttsBtn" class="curie-pill-action" title="Read aloud">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
               <span>Speak</span>
             </button>
-            <button id="sendToApiBtn" class="btn btn-secondary btn-sm" title="Send Transcript to API" style="border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.1); color: #a5b4fc;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-              <span>Send API</span>
-            </button>
+
             <div class="dropdown-wrapper">
-              <button id="exportDropdownBtn" class="btn btn-secondary btn-sm">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
+              <button id="exportDropdownBtn" class="curie-pill-action">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 <span>Export ▾</span>
               </button>
               <div id="exportMenu" class="dropdown-menu hidden">
-                <button id="exportTxtBtn" class="dropdown-item">📄 Download as Text (.txt)</button>
-                <button id="exportJsonBtn" class="dropdown-item">📊 Download as JSON (.json)</button>
-                <button id="exportSrtBtn" class="dropdown-item">🎬 Download Subtitles (.srt)</button>
+                <button id="exportTxtBtn" class="dropdown-item">📄 Text (.txt)</button>
+                <button id="exportJsonBtn" class="dropdown-item">📊 JSON (.json)</button>
+                <button id="exportSrtBtn" class="dropdown-item">🎬 Subtitles (.srt)</button>
               </div>
             </div>
-            <button id="clearBtn" class="btn btn-danger-soft btn-sm" title="Clear all text">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-              <span>Clear</span>
-            </button>
           </div>
-        </div>
 
-        <!-- Live Live Streaming Transcript Box -->
-        <div class="live-stream-box">
-          <div class="live-stream-header">
-            <span class="live-stream-title">
-              <span class="pulse-dot"></span> Live Speech Stream:
-            </span>
-            <span class="confidence-indicator" id="liveConfidence">Ready</span>
-          </div>
-          <div class="live-stream-content" id="liveStreamText">
-            <span class="placeholder-text">Speak into your microphone to see live transcription here...</span>
-          </div>
-        </div>
-
-        <!-- Tab 1: Full Document Editor View -->
-        <div id="fullViewTab" class="tab-content active">
-          <div class="editor-container">
-            <textarea id="finalTranscriptArea" class="transcript-editor" placeholder="Final transcripts will be accumulated here. You can also edit this text manually..."></textarea>
-          </div>
-        </div>
-
-        <!-- Tab 2: Timeline Segment Cards View -->
-        <div id="timelineViewTab" class="tab-content">
-          <div class="timeline-container" id="timelineContainer">
+          <!-- Timeline segments container -->
+          <div class="timeline-sub-container" id="timelineContainer">
             <div class="empty-timeline-state">
-              <p>No speech segments captured yet. Start speaking to build the timeline!</p>
+              <p>No speech segments captured yet. Speak to build timeline.</p>
             </div>
           </div>
         </div>
 
-        <!-- Quick Tips Footer -->
-        <div class="tips-box">
-          <span class="tip-icon">💡</span>
-          <span class="tip-text">
-            <strong>Pro-tip:</strong> Web Speech API uses Google's neural cloud speech backend in Chromium browsers. Sinhala (`si-LK`), English, Tamil, and 50+ languages are natively supported!
-          </span>
-        </div>
-      </section>
-    </main>
+        <!-- Tab 2: Voice & STT Engine Settings -->
+        <div class="drawer-section-tab" id="drawerSettingsTab">
+          <div class="setting-item-group">
+            <label class="setting-group-label" for="languageSelect">Voice Recognition Language</label>
+            <div class="quick-lang-chips">
+              <button type="button" class="lang-pill active" data-lang="si-LK">සිංහල (Sinhala)</button>
+              <button type="button" class="lang-pill" data-lang="en-US">English (US)</button>
+              <button type="button" class="lang-pill" data-lang="en-IN">English (India)</button>
+              <button type="button" class="lang-pill" data-lang="ta-LK">தமிழ் (Tamil)</button>
+            </div>
+            <select id="languageSelect" class="curie-select"></select>
+          </div>
 
-    <!-- Diagnostics / Developer Event Drawer -->
+          <div class="toggles-list">
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Continuous Listening</span>
+                <span class="toggle-desc">Keep listening without auto-timeout</span>
+              </div>
+              <label class="curie-switch">
+                <input type="checkbox" id="continuousToggle" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Interim Results</span>
+                <span class="toggle-desc">Real-time live typing preview stream</span>
+              </div>
+              <label class="curie-switch">
+                <input type="checkbox" id="interimToggle" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Auto-Reconnection</span>
+                <span class="toggle-desc">Auto restart if browser engine silences</span>
+              </div>
+              <label class="curie-switch">
+                <input type="checkbox" id="autoRestartToggle" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Web Audio Visualizer</span>
+                <span class="toggle-desc">Live microphone frequency analysis</span>
+              </div>
+              <label class="curie-switch">
+                <input type="checkbox" id="visualizerToggle" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: API & CRM Integration Settings -->
+        <div class="drawer-section-tab" id="drawerApiTab">
+          <div class="setting-item-group">
+            <label class="setting-group-label" for="apiEndpointInput">STT Backend API Endpoint</label>
+            <input type="text" id="apiEndpointInput" class="curie-input font-mono" value="http://localhost:8000/api/stt" placeholder="http://localhost:8000/api/stt" />
+          </div>
+
+          <div class="setting-item-group">
+            <label class="setting-group-label" for="apiAuthKeyInput">Authorization Bearer Token</label>
+            <input type="text" id="apiAuthKeyInput" class="curie-input font-mono" placeholder="Enter bearer token..." />
+          </div>
+
+          <div class="setting-item-group">
+            <label class="setting-group-label" for="apiSourceInput">API Source Tag</label>
+            <input type="text" id="apiSourceInput" class="curie-input font-mono" value="CRM" />
+          </div>
+
+          <div class="toggles-list">
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Auto-Send on Stop</span>
+                <span class="toggle-desc">Automatically POST transcript when speech stops</span>
+              </div>
+              <label class="curie-switch">
+                <input type="checkbox" id="apiAutoSendToggle" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Bypass CORS (Proxy)</span>
+                <span class="toggle-desc">Route through Vite development proxy</span>
+              </div>
+              <label class="curie-switch">
+                <input type="checkbox" id="apiCorsProxyToggle" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- API Response Viewer Box -->
+          <div class="api-inspect-card">
+            <div class="api-inspect-header">
+              <span>Latest API Response</span>
+              <span id="apiTabBadge" class="api-badge-tag hidden">200</span>
+            </div>
+
+            <div id="emptyApiState" class="empty-api-notice">
+              <p>No backend response received yet. Send a message to inspect JSON.</p>
+            </div>
+
+            <div id="apiResultCard" class="api-result-body hidden">
+              <div class="api-meta-row">
+                <span id="apiResponseStatusBadge" class="api-status-pill status-success">
+                  <span id="apiResponseStatusText">200 OK</span>
+                </span>
+                <span id="apiResponseLatency" class="font-mono">0ms</span>
+                <span id="apiResponseTimestamp" class="font-mono">--:--</span>
+              </div>
+
+              <div id="apiExtractedBox" class="api-extracted-box hidden">
+                <span class="extracted-label">💬 Extracted Answer:</span>
+                <div id="apiExtractedText" class="extracted-content"></div>
+              </div>
+
+              <pre class="api-json-pre"><code id="apiResponseBodyCode" class="font-mono"></code></pre>
+              
+              <div class="api-mini-actions">
+                <button id="copyApiResponseBtn" class="btn-xs">Copy JSON</button>
+                <button id="speakApiResponseBtn" class="btn-xs hidden">Speak Reply</button>
+                <button id="clearApiResponseBtn" class="btn-xs danger">Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Live Metrics -->
+        <div class="drawer-section-tab" id="drawerMetricsTab">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-card-label">Duration</span>
+              <span class="metric-card-val font-mono" id="durationTimer">00:00</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card-label">Words Count</span>
+              <span class="metric-card-val font-mono" id="wordCount">0</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card-label">Characters</span>
+              <span class="metric-card-val font-mono" id="charCount">0</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card-label">Speech Confidence</span>
+              <span class="metric-card-val font-mono" id="avgConfidence">--</span>
+            </div>
+          </div>
+
+          <div class="curie-info-box">
+            <span class="info-icon">💡</span>
+            <p>Curie AI Chat is powered by the browser's native Web Speech API with on-device dictation and cloud neural models. Sinhala (si-LK), English, Tamil, and 50+ languages are fully supported.</p>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Side Panel Backdrop Overlay -->
+    <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
+
+    <!-- 4. Patient Search Quick Modal (CTRL+P) -->
+    <div class="curie-modal-backdrop hidden" id="patientSearchModal">
+      <div class="curie-modal-card">
+        <div class="modal-search-header">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="patientModalSearchInput" class="modal-search-input" placeholder="Search patient name, EHR ID, or room..." autofocus />
+          <kbd class="modal-esc-badge" id="closePatientModalBtn">ESC</kbd>
+        </div>
+
+        <div class="patient-search-results" id="patientSearchResults">
+          <div class="patient-result-item" data-name="Johnathan Miller" data-id="P-10824" data-dept="Cardiology">
+            <div class="patient-avatar">JM</div>
+            <div class="patient-meta">
+              <div class="patient-name">Johnathan Miller <span class="patient-id">#P-10824</span></div>
+              <div class="patient-sub">45M • Cardiology • Room 304B • Dr. Vance</div>
+            </div>
+            <span class="patient-badge">Admitted</span>
+          </div>
+
+          <div class="patient-result-item" data-name="Sarah Jenkins" data-id="P-20491" data-dept="Radiology">
+            <div class="patient-avatar">SJ</div>
+            <div class="patient-meta">
+              <div class="patient-name">Sarah Jenkins <span class="patient-id">#P-20491</span></div>
+              <div class="patient-sub">32F • Radiology • CT Scan Pending</div>
+            </div>
+            <span class="patient-badge">Outpatient</span>
+          </div>
+
+          <div class="patient-result-item" data-name="Michael Chen" data-id="P-31084" data-dept="General Medicine">
+            <div class="patient-avatar">MC</div>
+            <div class="patient-meta">
+              <div class="patient-name">Michael Chen <span class="patient-id">#P-31084</span></div>
+              <div class="patient-sub">58M • General Medicine • PO-2024-99 awaiting approval</div>
+            </div>
+            <span class="patient-badge alert">PO Pending</span>
+          </div>
+
+          <div class="patient-result-item" data-name="Amara Silva" data-id="P-44021" data-dept="Pediatrics">
+            <div class="patient-avatar">AS</div>
+            <div class="patient-meta">
+              <div class="patient-name">Amara Silva <span class="patient-id">#P-44021</span></div>
+              <div class="patient-sub">12F • Pediatrics • Routine Checkup</div>
+            </div>
+            <span class="patient-badge">Scheduled</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Diagnostics Event Drawer (From Right) -->
     <aside id="diagnosticsDrawer" class="diagnostics-drawer hidden">
       <div class="drawer-header">
         <div class="drawer-title">
@@ -345,11 +640,11 @@
             <polyline points="4 17 10 11 4 5"></polyline>
             <line x1="12" y1="19" x2="20" y2="19"></line>
           </svg>
-          <h3>Web Speech API Event Diagnostics</h3>
+          <h3>Speech API Event Diagnostics</h3>
         </div>
         <div class="drawer-actions">
-          <button id="clearLogsBtn" class="btn btn-secondary btn-xs">Clear Logs</button>
-          <button id="closeDiagnosticsBtn" class="btn-close" aria-label="Close Diagnostics">✕</button>
+          <button id="clearLogsBtn" class="btn-xs">Clear Logs</button>
+          <button id="closeDiagnosticsBtn" class="close-btn" aria-label="Close Diagnostics">✕</button>
         </div>
       </div>
       <div class="drawer-body">
@@ -359,10 +654,27 @@
       </div>
     </aside>
 
-    <!-- Toast Notification -->
-    <div id="toastNotification" class="toast hidden">
-      <span id="toastMessage">Notification message</span>
+    <!-- Hidden compatibility elements for tab switching and quick preview -->
+    <div id="fullViewTab" class="hidden"></div>
+    <div id="timelineViewTab" class="hidden"></div>
+    <div id="apiViewTab" class="hidden"></div>
+    <button id="apiTabBtn" class="hidden"></button>
+    <div id="apiQuickPreviewBar" class="hidden">
+      <span id="apiQuickDot"></span>
+      <span id="apiQuickStatus"></span>
+      <span id="apiQuickMessage"></span>
+      <button id="viewApiResponseTabBtn"></button>
     </div>
+    <div id="apiResponseEndpoint" class="hidden"></div>
+    <div id="apiResponseRefId" class="hidden"></div>
+    <div id="apiResponseSource" class="hidden"></div>
+    <div id="apiResponseContentType" class="hidden"></div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="curie-toast hidden">
+      <span id="toastMessage">Notification</span>
+    </div>
+
   </div>
 
   <script type="module" src="./app.js"></script>

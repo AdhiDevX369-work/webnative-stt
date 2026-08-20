@@ -1,6 +1,6 @@
 /**
- * EchoNative STT Studio
- * Native Web Speech API (SpeechRecognition / webkitSpeechRecognition)
+ * Curie AI Chat & Native Web STT Studio
+ * High-performance browser speech recognition with CRM intelligence
  */
 
 // Supported Languages Database
@@ -14,7 +14,7 @@ const LANGUAGES = [
   { code: 'ta-IN', name: 'Tamil (India)', native: 'தமிழ் (இந்தியா)', group: 'South Asia' },
   { code: 'hi-IN', name: 'Hindi (India)', native: 'हिन्दी (भारत)', group: 'South Asia' },
   { code: 'ml-IN', name: 'Malayalam (India)', native: 'മലയാളം (ഇന്ത്യ)', group: 'South Asia' },
-  { code: 'te-IN', name: 'Telugu (India)', native: 'తెలుగు (భారతదేశం)', group: 'South Asia' },
+  { code: 'te-IN', name: 'Telugu (India)', native: 'తెలుగు (భారతదేశം)', group: 'South Asia' },
   { code: 'ja-JP', name: 'Japanese', native: '日本語', group: 'East Asia' },
   { code: 'ko-KR', name: 'Korean', native: '한국어', group: 'East Asia' },
   { code: 'zh-CN', name: 'Chinese (Mandarin Simplified)', native: '普通话 (中国)', group: 'East Asia' },
@@ -27,7 +27,7 @@ const LANGUAGES = [
   { code: 'ar-SA', name: 'Arabic (Saudi Arabia)', native: 'العربية (السعودية)', group: 'Middle East' }
 ];
 
-class STTStudioApp {
+class CurieChatApp {
   constructor() {
     this.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = null;
@@ -35,6 +35,9 @@ class STTStudioApp {
     this.userExplicitlyStopped = true;
     this.selectedLanguage = 'si-LK';
     this.currentSessionText = '';
+    this.isHoldingMic = false;
+    this.holdTimer = null;
+    this.crmMode = true;
 
     // State metrics
     this.sessionStartTime = null;
@@ -42,6 +45,7 @@ class STTStudioApp {
     this.segments = [];
     this.confidenceScores = [];
     this.diagnosticsLogs = [];
+    this.chatMessages = [];
 
     // Audio Visualizer Web Audio API
     this.audioContext = null;
@@ -60,7 +64,28 @@ class STTStudioApp {
   }
 
   initDOMElements() {
-    // Header & Badges
+    // Header & Navigation
+    this.drawerToggleBtn = document.getElementById('drawerToggleBtn');
+    this.sidePanelDrawer = document.getElementById('sidePanelDrawer');
+    this.closeSidePanelBtn = document.getElementById('closeSidePanelBtn');
+    this.drawerBackdrop = document.getElementById('drawerBackdrop');
+    this.topSettingsBtn = document.getElementById('topSettingsBtn');
+    this.railHomeBtn = document.getElementById('railHomeBtn');
+    this.railNewChatBtn = document.getElementById('railNewChatBtn');
+    this.railHistoryBtn = document.getElementById('railHistoryBtn');
+    this.railSettingsBtn = document.getElementById('railSettingsBtn');
+    this.departmentSelect = document.getElementById('departmentSelect');
+    this.billingActionBtn = document.getElementById('billingActionBtn');
+    this.logoutBtn = document.getElementById('logoutBtn');
+
+    // Patient Search Modal (CTRL+P)
+    this.patientSearchTrigger = document.getElementById('patientSearchTrigger');
+    this.patientSearchModal = document.getElementById('patientSearchModal');
+    this.closePatientModalBtn = document.getElementById('closePatientModalBtn');
+    this.patientModalSearchInput = document.getElementById('patientModalSearchInput');
+    this.patientSearchResults = document.getElementById('patientSearchResults');
+
+    // Badges & Diagnostics
     this.networkStatusBadge = document.getElementById('networkStatusBadge');
     this.networkStatusText = document.getElementById('networkStatusText');
     this.browserSupportBadge = document.getElementById('browserSupportBadge');
@@ -72,9 +97,34 @@ class STTStudioApp {
     this.clearLogsBtn = document.getElementById('clearLogsBtn');
     this.eventLogsList = document.getElementById('eventLogsList');
 
-    // Controls
-    this.languageSelect = document.getElementById('languageSelect');
+    // Workspace & Chat Views
+    this.chatContentScroll = document.getElementById('chatContentScroll');
+    this.curieHeroView = document.getElementById('curieHeroView');
+    this.chatMessagesStream = document.getElementById('chatMessagesStream');
+    this.suggestionButtons = document.querySelectorAll('.suggestion-pill-btn');
+    this.liveVoiceStreamBar = document.getElementById('liveVoiceStreamBar');
+    this.liveStreamText = document.getElementById('liveStreamText');
+    this.liveConfidence = document.getElementById('liveConfidence');
+
+    // Floating Input Controls
+    this.chatTextInput = document.getElementById('chatTextInput');
+    this.finalTranscriptArea = document.getElementById('finalTranscriptArea');
+    this.crmModeToggleBtn = document.getElementById('crmModeToggleBtn');
+    this.micButton = document.getElementById('micButton');
+    this.micIcon = document.getElementById('micIcon');
+    this.micStopIcon = document.getElementById('micStopIcon');
+    this.sendChatBtn = document.getElementById('sendChatBtn');
+    this.sendToApiBtn = document.getElementById('sendToApiBtn');
+    this.micStatusText = document.getElementById('micStatusText');
+    this.micHintText = document.getElementById('micHintText');
     this.currentLangTag = document.getElementById('currentLangTag');
+    this.waveformCanvas = document.getElementById('waveformCanvas');
+    this.visualizerOverlay = document.getElementById('visualizerOverlay');
+
+    // Side Panel Tabs & Settings
+    this.drawerTabButtons = document.querySelectorAll('.drawer-tab-btn');
+    this.drawerSectionTabs = document.querySelectorAll('.drawer-section-tab');
+    this.languageSelect = document.getElementById('languageSelect');
     this.langPills = document.querySelectorAll('.lang-pill');
     this.continuousToggle = document.getElementById('continuousToggle');
     this.interimToggle = document.getElementById('interimToggle');
@@ -82,34 +132,13 @@ class STTStudioApp {
     this.visualizerToggle = document.getElementById('visualizerToggle');
     this.apiEndpointInput = document.getElementById('apiEndpointInput');
     this.apiAuthKeyInput = document.getElementById('apiAuthKeyInput');
-    this.apiAutoSendToggle = document.getElementById('apiAutoSendToggle');
     this.apiSourceInput = document.getElementById('apiSourceInput');
-    this.sendToApiBtn = document.getElementById('sendToApiBtn');
+    this.apiAutoSendToggle = document.getElementById('apiAutoSendToggle');
+    this.apiCorsProxyToggle = document.getElementById('apiCorsProxyToggle');
 
-    // Hero Station
-    this.micButton = document.getElementById('micButton');
-    this.micIcon = document.getElementById('micIcon');
-    this.micStopIcon = document.getElementById('micStopIcon');
-    this.micStatusText = document.getElementById('micStatusText');
-    this.micHintText = document.getElementById('micHintText');
-    this.waveformCanvas = document.getElementById('waveformCanvas');
-    this.visualizerOverlay = document.getElementById('visualizerOverlay');
-
-    // Metrics
-    this.durationTimer = document.getElementById('durationTimer');
-    this.wordCount = document.getElementById('wordCount');
-    this.charCount = document.getElementById('charCount');
-    this.avgConfidence = document.getElementById('avgConfidence');
-
-    // Output & Transcripts
-    this.liveStreamText = document.getElementById('liveStreamText');
-    this.liveConfidence = document.getElementById('liveConfidence');
-    this.finalTranscriptArea = document.getElementById('finalTranscriptArea');
+    // History & Timeline
+    this.sessionHistoryList = document.getElementById('sessionHistoryList');
     this.timelineContainer = document.getElementById('timelineContainer');
-    this.tabButtons = document.querySelectorAll('.tab-btn');
-    this.tabContents = document.querySelectorAll('.tab-content');
-
-    // Actions
     this.copyBtn = document.getElementById('copyBtn');
     this.ttsBtn = document.getElementById('ttsBtn');
     this.clearBtn = document.getElementById('clearBtn');
@@ -118,8 +147,34 @@ class STTStudioApp {
     this.exportTxtBtn = document.getElementById('exportTxtBtn');
     this.exportJsonBtn = document.getElementById('exportJsonBtn');
     this.exportSrtBtn = document.getElementById('exportSrtBtn');
+
+    // Metrics
+    this.durationTimer = document.getElementById('durationTimer');
+    this.wordCount = document.getElementById('wordCount');
+    this.charCount = document.getElementById('charCount');
+    this.avgConfidence = document.getElementById('avgConfidence');
+
+    // API Response Inspector
+    this.apiTabBadge = document.getElementById('apiTabBadge');
+    this.emptyApiState = document.getElementById('emptyApiState');
+    this.apiResultCard = document.getElementById('apiResultCard');
+    this.apiResponseStatusBadge = document.getElementById('apiResponseStatusBadge');
+    this.apiResponseStatusText = document.getElementById('apiResponseStatusText');
+    this.apiResponseLatency = document.getElementById('apiResponseLatency');
+    this.apiResponseTimestamp = document.getElementById('apiResponseTimestamp');
+    this.apiExtractedBox = document.getElementById('apiExtractedBox');
+    this.apiExtractedText = document.getElementById('apiExtractedText');
+    this.apiResponseBodyCode = document.getElementById('apiResponseBodyCode');
+    this.copyApiResponseBtn = document.getElementById('copyApiResponseBtn');
+    this.speakApiResponseBtn = document.getElementById('speakApiResponseBtn');
+    this.clearApiResponseBtn = document.getElementById('clearApiResponseBtn');
+
+    // Toasts
     this.toastNotification = document.getElementById('toastNotification');
     this.toastMessage = document.getElementById('toastMessage');
+
+    this.lastApiResponseData = null;
+    this.lastExtractedReply = '';
   }
 
   initLanguages() {
@@ -156,7 +211,7 @@ class STTStudioApp {
       this.browserSupportBadge.className = 'support-badge supported';
       this.browserSupportBadge.innerHTML = `
         <span class="status-dot"></span>
-        <span class="status-text">Web Speech API Supported ✓</span>
+        <span class="status-text">Web Speech API ✓</span>
       `;
       this.logDiagnostic('SYSTEM', 'SpeechRecognition API is supported in this browser.', {
         engine: this.SpeechRecognition.name || 'WebKit/Standard',
@@ -172,21 +227,16 @@ class STTStudioApp {
       this.micButton.disabled = true;
       this.micButton.style.opacity = '0.5';
       this.micButton.style.cursor = 'not-allowed';
-      this.micStatusText.textContent = 'Browser Unsupported';
-      this.micHintText.textContent = 'Please open in Chrome, Edge, Safari, or Brave';
-      this.logDiagnostic('SYSTEM_ERROR', 'SpeechRecognition API is NOT supported in this browser environment.', {
-        userAgent: navigator.userAgent
-      });
+      this.logDiagnostic('SYSTEM_ERROR', 'SpeechRecognition API is NOT supported in this browser environment.');
     }
   }
 
   initNetworkAndOffline() {
-    // Register Service Worker for offline asset caching
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            this.logDiagnostic('SERVICE_WORKER', `Service Worker registered successfully (scope: ${reg.scope})`);
+            this.logDiagnostic('SERVICE_WORKER', `Service Worker registered (scope: ${reg.scope})`);
           })
           .catch((err) => {
             this.logDiagnostic('SERVICE_WORKER_WARN', 'Service Worker registration failed:', err);
@@ -194,7 +244,6 @@ class STTStudioApp {
       });
     }
 
-    // Monitor Online / Offline status
     const updateStatus = () => {
       const isOnline = navigator.onLine;
       if (this.networkStatusBadge) {
@@ -203,21 +252,21 @@ class STTStudioApp {
           this.networkStatusText.textContent = 'Online';
         } else {
           this.networkStatusBadge.className = 'network-badge offline';
-          this.networkStatusText.textContent = 'Offline Mode';
+          this.networkStatusText.textContent = 'Offline';
         }
       }
     };
 
     window.addEventListener('online', () => {
       updateStatus();
-      this.showToast('Back Online 🌐 (Cloud & on-device recognition active)');
+      this.showToast('Online 🌐 (Neural cloud & local speech active)');
       this.logDiagnostic('NETWORK_ONLINE', 'Network connection restored.');
     });
 
     window.addEventListener('offline', () => {
       updateStatus();
-      this.showToast('Offline Mode ⚡ (Using cached app shell & on-device speech engine)', 'info');
-      this.logDiagnostic('NETWORK_OFFLINE', 'Device is offline. Web Speech API will utilize local on-device speech dictation if installed.');
+      this.showToast('Offline Mode ⚡ (Using local dictation)', 'info');
+      this.logDiagnostic('NETWORK_OFFLINE', 'Device is offline.');
     });
 
     updateStatus();
@@ -230,13 +279,17 @@ class STTStudioApp {
         finalText: this.finalTranscriptArea.value,
         segments: this.segments,
         confidenceScores: this.confidenceScores,
+        chatMessages: this.chatMessages,
         apiEndpoint: this.apiEndpointInput ? this.apiEndpointInput.value : 'http://localhost:8000/api/stt',
         apiAuthKey: this.apiAuthKeyInput ? this.apiAuthKeyInput.value : '',
         apiAutoSend: this.apiAutoSendToggle ? this.apiAutoSendToggle.checked : true,
+        apiCorsProxy: this.apiCorsProxyToggle ? this.apiCorsProxyToggle.checked : true,
         apiSource: this.apiSourceInput ? this.apiSourceInput.value : 'CRM',
+        crmMode: this.crmMode,
+        lastApiResponseData: this.lastApiResponseData,
         updatedAt: Date.now()
       };
-      localStorage.setItem('echonative_stt_session', JSON.stringify(data));
+      localStorage.setItem('curie_ai_chat_session', JSON.stringify(data));
     } catch (e) {
       console.warn('LocalStorage save error:', e);
     }
@@ -244,7 +297,7 @@ class STTStudioApp {
 
   loadSessionFromStorage() {
     try {
-      const raw = localStorage.getItem('echonative_stt_session');
+      const raw = localStorage.getItem('curie_ai_chat_session');
       if (!raw) return;
       const data = JSON.parse(raw);
 
@@ -256,6 +309,12 @@ class STTStudioApp {
         this.confidenceScores = data.confidenceScores || [];
         this.timelineContainer.innerHTML = '';
         data.segments.forEach(seg => this.appendTimelineCard(seg));
+      }
+      if (Array.isArray(data.chatMessages) && data.chatMessages.length > 0) {
+        this.chatMessages = data.chatMessages;
+        this.curieHeroView.classList.add('hidden');
+        this.chatMessagesStream.classList.remove('hidden');
+        this.chatMessages.forEach(msg => this.renderMessageBubble(msg, false));
       }
       if (data.language) {
         this.setLanguage(data.language);
@@ -269,8 +328,18 @@ class STTStudioApp {
       if (data.apiAutoSend !== undefined && this.apiAutoSendToggle) {
         this.apiAutoSendToggle.checked = data.apiAutoSend;
       }
+      if (data.apiCorsProxy !== undefined && this.apiCorsProxyToggle) {
+        this.apiCorsProxyToggle.checked = data.apiCorsProxy;
+      }
       if (data.apiSource && this.apiSourceInput) {
         this.apiSourceInput.value = data.apiSource;
+      }
+      if (data.crmMode !== undefined) {
+        this.crmMode = data.crmMode;
+        this.crmModeToggleBtn.classList.toggle('active', this.crmMode);
+      }
+      if (data.lastApiResponseData) {
+        this.renderApiResponse(data.lastApiResponseData);
       }
       this.updateMetrics();
     } catch (e) {
@@ -279,42 +348,202 @@ class STTStudioApp {
   }
 
   setupEventListeners() {
-    // Mic Button
-    this.micButton.addEventListener('click', () => {
-      if (this.isRecording) {
-        this.stopRecording();
-      } else {
-        this.startRecording();
+    // 1. Drawer Toggle (Hamburger & Rail buttons)
+    this.drawerToggleBtn.addEventListener('click', () => this.toggleSidePanel(true));
+    this.closeSidePanelBtn.addEventListener('click', () => this.toggleSidePanel(false));
+    this.drawerBackdrop.addEventListener('click', () => this.toggleSidePanel(false));
+
+    if (this.topSettingsBtn) {
+      this.topSettingsBtn.addEventListener('click', () => {
+        this.toggleSidePanel(true);
+        this.switchDrawerTab('settings');
+      });
+    }
+
+    if (this.railSettingsBtn) {
+      this.railSettingsBtn.addEventListener('click', () => {
+        this.toggleSidePanel(true);
+        this.switchDrawerTab('settings');
+      });
+    }
+
+    if (this.railHistoryBtn) {
+      this.railHistoryBtn.addEventListener('click', () => {
+        this.toggleSidePanel(true);
+        this.switchDrawerTab('history');
+      });
+    }
+
+    if (this.railHomeBtn) {
+      this.railHomeBtn.addEventListener('click', () => {
+        this.toggleSidePanel(false);
+      });
+    }
+
+    if (this.railNewChatBtn) {
+      this.railNewChatBtn.addEventListener('click', () => {
+        this.startNewChat();
+      });
+    }
+
+    // 2. Drawer Navigation Tabs
+    this.drawerTabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabKey = btn.dataset.drawerTab;
+        this.switchDrawerTab(tabKey);
+      });
+    });
+
+    // 3. Patient Search (CTRL+P & Click)
+    this.patientSearchTrigger.addEventListener('click', () => this.openPatientSearchModal());
+    this.closePatientModalBtn.addEventListener('click', () => this.closePatientSearchModal());
+    this.patientSearchModal.addEventListener('click', (e) => {
+      if (e.target === this.patientSearchModal) this.closePatientSearchModal();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      // Ctrl+P or Cmd+P
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        this.openPatientSearchModal();
+      }
+      // Escape
+      if (e.key === 'Escape') {
+        this.closePatientSearchModal();
+        this.toggleSidePanel(false);
+        this.diagnosticsDrawer.classList.add('hidden');
       }
     });
 
-    // Language Select
+    this.patientModalSearchInput.addEventListener('input', (e) => {
+      this.filterPatients(e.target.value);
+    });
+
+    this.patientSearchResults.addEventListener('click', (e) => {
+      const item = e.target.closest('.patient-result-item');
+      if (item) {
+        const name = item.dataset.name;
+        const id = item.dataset.id;
+        const dept = item.dataset.dept;
+        this.selectPatient(name, id, dept);
+      }
+    });
+
+    // 4. Suggestion Pills
+    this.suggestionButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const query = btn.dataset.query;
+        this.chatTextInput.value = query;
+        this.sendChatMessage(query);
+      });
+    });
+
+    // 5. Message Input & Send Button
+    this.sendChatBtn.addEventListener('click', () => {
+      const text = this.chatTextInput.value.trim();
+      if (text) {
+        this.sendChatMessage(text);
+      }
+    });
+
+    this.chatTextInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const text = this.chatTextInput.value.trim();
+        if (text) {
+          this.sendChatMessage(text);
+        }
+      }
+    });
+
+    this.chatTextInput.addEventListener('input', () => {
+      this.adjustInputHeight();
+      this.finalTranscriptArea.value = this.chatTextInput.value;
+      this.updateMetrics();
+    });
+
+    // 6. CRM Mode Toggle
+    this.crmModeToggleBtn.addEventListener('click', () => {
+      this.crmMode = !this.crmMode;
+      this.crmModeToggleBtn.classList.toggle('active', this.crmMode);
+      if (this.apiSourceInput) {
+        this.apiSourceInput.value = this.crmMode ? 'AH_CRM' : 'GENERAL';
+      }
+      this.showToast(this.crmMode ? 'AH CRM Context Enabled' : 'Standard Chat Mode');
+      this.saveSessionToStorage();
+    });
+
+    // 7. Microphone Hold-to-Talk and Click-to-Toggle
+    // Hold behavior (Mouse/Touch)
+    this.micButton.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      this.isHoldingMic = false;
+      this.holdTimer = setTimeout(() => {
+        this.isHoldingMic = true;
+        if (!this.isRecording) {
+          this.startRecording();
+        }
+      }, 250);
+    });
+
+    window.addEventListener('mouseup', () => {
+      clearTimeout(this.holdTimer);
+      if (this.isHoldingMic) {
+        this.isHoldingMic = false;
+        if (this.isRecording) {
+          this.stopRecording();
+        }
+      }
+    });
+
+    // Touch support for mobile
+    this.micButton.addEventListener('touchstart', (e) => {
+      this.isHoldingMic = false;
+      this.holdTimer = setTimeout(() => {
+        this.isHoldingMic = true;
+        if (!this.isRecording) {
+          this.startRecording();
+        }
+      }, 250);
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      clearTimeout(this.holdTimer);
+      if (this.isHoldingMic) {
+        this.isHoldingMic = false;
+        if (this.isRecording) {
+          this.stopRecording();
+        }
+      }
+    });
+
+    // Simple Click behavior
+    this.micButton.addEventListener('click', () => {
+      if (!this.isHoldingMic) {
+        if (this.isRecording) {
+          this.stopRecording();
+        } else {
+          this.startRecording();
+        }
+      }
+    });
+
+    // 8. Language Controls
     this.languageSelect.addEventListener('change', (e) => {
       this.setLanguage(e.target.value);
     });
 
-    // Quick Language Pills
     this.langPills.forEach(pill => {
       pill.addEventListener('click', () => {
-        const lang = pill.dataset.lang;
-        this.setLanguage(lang);
+        this.setLanguage(pill.dataset.lang);
       });
     });
 
-    // Tab Switching
-    this.tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const targetTab = btn.dataset.tab;
-        this.switchTab(targetTab);
-      });
-    });
-
-    // Action Buttons
+    // 9. Actions (Copy, Speak, Clear, Export)
     this.copyBtn.addEventListener('click', () => this.copyTranscript());
     this.ttsBtn.addEventListener('click', () => this.speakTranscript());
     this.clearBtn.addEventListener('click', () => this.clearAll());
 
-    // Export Dropdown
     this.exportDropdownBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.exportMenu.classList.toggle('hidden');
@@ -330,52 +559,136 @@ class STTStudioApp {
     this.exportJsonBtn.addEventListener('click', () => this.exportAsJson());
     this.exportSrtBtn.addEventListener('click', () => this.exportAsSrt());
 
-    // Final textarea editing
-    this.finalTranscriptArea.addEventListener('input', () => {
-      this.updateMetrics();
-    });
-
+    // 10. API Settings & Inspector Actions
     if (this.apiEndpointInput) {
-      this.apiEndpointInput.addEventListener('input', () => {
-        this.saveSessionToStorage();
-      });
+      this.apiEndpointInput.addEventListener('input', () => this.saveSessionToStorage());
     }
     if (this.apiAuthKeyInput) {
-      this.apiAuthKeyInput.addEventListener('input', () => {
-        this.saveSessionToStorage();
-      });
-    }
-    if (this.apiAutoSendToggle) {
-      this.apiAutoSendToggle.addEventListener('change', () => {
-        this.saveSessionToStorage();
-      });
+      this.apiAuthKeyInput.addEventListener('input', () => this.saveSessionToStorage());
     }
     if (this.apiSourceInput) {
-      this.apiSourceInput.addEventListener('input', () => {
-        this.saveSessionToStorage();
-      });
+      this.apiSourceInput.addEventListener('input', () => this.saveSessionToStorage());
     }
-    if (this.sendToApiBtn) {
-      this.sendToApiBtn.addEventListener('click', () => {
-        this.sendCurrentSessionTranscript(true);
-      });
+    if (this.apiAutoSendToggle) {
+      this.apiAutoSendToggle.addEventListener('change', () => this.saveSessionToStorage());
+    }
+    if (this.apiCorsProxyToggle) {
+      this.apiCorsProxyToggle.addEventListener('change', () => this.saveSessionToStorage());
     }
 
-    // Diagnostics Drawer
+    if (this.copyApiResponseBtn) {
+      this.copyApiResponseBtn.addEventListener('click', () => this.copyApiResponse());
+    }
+    if (this.speakApiResponseBtn) {
+      this.speakApiResponseBtn.addEventListener('click', () => this.speakApiResponse());
+    }
+    if (this.clearApiResponseBtn) {
+      this.clearApiResponseBtn.addEventListener('click', () => this.clearApiResponse());
+    }
+
+    // 11. Diagnostics Drawer
     this.toggleDiagnosticsBtn.addEventListener('click', () => {
       this.diagnosticsDrawer.classList.toggle('hidden');
     });
-
     this.closeDiagnosticsBtn.addEventListener('click', () => {
       this.diagnosticsDrawer.classList.add('hidden');
     });
-
     this.clearLogsBtn.addEventListener('click', () => {
       this.diagnosticsLogs = [];
       this.eventLogsList.innerHTML = '';
       this.logCountBadge.textContent = '0';
+      this.logCountBadge.classList.add('hidden');
       this.showToast('Diagnostics logs cleared');
     });
+
+    if (this.billingActionBtn) {
+      this.billingActionBtn.addEventListener('click', () => {
+        this.sendChatMessage("Show billing and claims status for pending items");
+      });
+    }
+
+    if (this.logoutBtn) {
+      this.logoutBtn.addEventListener('click', () => {
+        this.showToast('Session ehr_test active. Click to lock.');
+      });
+    }
+  }
+
+  toggleSidePanel(isOpen) {
+    if (isOpen) {
+      this.sidePanelDrawer.classList.add('open');
+      this.drawerBackdrop.classList.remove('hidden');
+    } else {
+      this.sidePanelDrawer.classList.remove('open');
+      this.drawerBackdrop.classList.add('hidden');
+    }
+  }
+
+  switchDrawerTab(tabKey) {
+    this.drawerTabButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.drawerTab === tabKey);
+    });
+
+    this.drawerSectionTabs.forEach(tab => {
+      tab.classList.remove('active');
+    });
+
+    const target = document.getElementById(`drawer${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}Tab`);
+    if (target) {
+      target.classList.add('active');
+    }
+  }
+
+  openPatientSearchModal() {
+    this.patientSearchModal.classList.remove('hidden');
+    this.patientModalSearchInput.value = '';
+    this.patientModalSearchInput.focus();
+    this.filterPatients('');
+  }
+
+  closePatientSearchModal() {
+    this.patientSearchModal.classList.add('hidden');
+  }
+
+  filterPatients(query) {
+    const q = query.toLowerCase().trim();
+    const items = this.patientSearchResults.querySelectorAll('.patient-result-item');
+    items.forEach(item => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+  }
+
+  selectPatient(name, id, dept) {
+    this.closePatientSearchModal();
+    this.departmentSelect.value = dept.toLowerCase().includes('cardio') ? 'cardiology' : 'all';
+    this.showToast(`Selected Patient: ${name} (${id})`);
+    this.sendChatMessage(`Review chart and pending orders for patient ${name} (${id})`);
+  }
+
+  startNewChat() {
+    this.chatMessages = [];
+    this.chatMessagesStream.innerHTML = '';
+    this.chatMessagesStream.classList.add('hidden');
+    this.curieHeroView.classList.remove('hidden');
+    this.chatTextInput.value = '';
+    this.finalTranscriptArea.value = '';
+    this.segments = [];
+    this.confidenceScores = [];
+    this.timelineContainer.innerHTML = `
+      <div class="empty-timeline-state">
+        <p>No speech segments captured yet. Speak to build timeline.</p>
+      </div>
+    `;
+    this.updateMetrics();
+    this.saveSessionToStorage();
+    this.showToast('Started new consultation session');
+    this.toggleSidePanel(false);
+  }
+
+  adjustInputHeight() {
+    this.chatTextInput.style.height = 'auto';
+    this.chatTextInput.style.height = Math.min(this.chatTextInput.scrollHeight, 120) + 'px';
   }
 
   setLanguage(langCode) {
@@ -383,18 +696,13 @@ class STTStudioApp {
     this.languageSelect.value = langCode;
 
     this.langPills.forEach(pill => {
-      if (pill.dataset.lang === langCode) {
-        pill.classList.add('active');
-      } else {
-        pill.classList.remove('active');
-      }
+      pill.classList.toggle('active', pill.dataset.lang === langCode);
     });
 
     this.updateCurrentLangDisplay();
     this.showToast(`Language set to: ${langCode}`);
     this.logDiagnostic('CONFIG_CHANGE', `Language changed to ${langCode}`);
 
-    // If currently recording, restart recognition with new language
     if (this.isRecording && this.recognition) {
       this.recognition.lang = langCode;
       this.recognition.stop();
@@ -410,15 +718,9 @@ class STTStudioApp {
     }
   }
 
-  switchTab(tabKey) {
-    this.tabButtons.forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.tab === tabKey);
-    });
-
-    document.getElementById('fullViewTab').classList.toggle('active', tabKey === 'full');
-    document.getElementById('timelineViewTab').classList.toggle('active', tabKey === 'timeline');
-  }
-
+  // =========================================================================
+  // Speech Recognition Core
+  // =========================================================================
   startRecording() {
     if (!this.SpeechRecognition) {
       this.showToast('Speech Recognition not supported in this browser', 'error');
@@ -445,7 +747,7 @@ class STTStudioApp {
         this.startAudioVisualizer();
       }
 
-      this.logDiagnostic('RECOGNITION_START_REQUEST', `Starting recognition [lang: ${this.selectedLanguage}, continuous: ${this.recognition.continuous}, interim: ${this.recognition.interimResults}]`);
+      this.logDiagnostic('RECOGNITION_START', `Recognition started [lang: ${this.selectedLanguage}]`);
     } catch (err) {
       this.logDiagnostic('ERROR_ON_START', err.message, err);
       this.showToast(`Failed to start: ${err.message}`, 'error');
@@ -467,51 +769,34 @@ class STTStudioApp {
     this.updateMicUI(false);
     this.stopDurationTimer();
     this.stopAudioVisualizer();
-    this.liveStreamText.innerHTML = '<span class="placeholder-text">Recognition stopped. Click microphone to start again.</span>';
-    this.liveConfidence.textContent = 'Idle';
-    this.liveConfidence.className = 'confidence-indicator';
-    this.logDiagnostic('USER_STOP', 'User explicitly stopped recording');
-    this.sendCurrentSessionTranscript();
+    this.liveVoiceStreamBar.classList.add('hidden');
+    this.logDiagnostic('USER_STOP', 'User stopped recording');
+
+    // Auto-send if enabled
+    if (this.apiAutoSendToggle && this.apiAutoSendToggle.checked && this.currentSessionText.trim()) {
+      this.sendCurrentSessionTranscript();
+    }
   }
 
   attachRecognitionEvents() {
     this.recognition.onstart = () => {
-      this.updateMicStatus('Listening...', 'recording', 'Speak clearly into your microphone');
-      this.logDiagnostic('onstart', 'Speech recognition engine started');
-    };
-
-    this.recognition.onaudiostart = () => {
-      this.logDiagnostic('onaudiostart', 'Audio capture hardware started');
-    };
-
-    this.recognition.onsoundstart = () => {
-      this.logDiagnostic('onsoundstart', 'Sound has been detected');
+      this.liveVoiceStreamBar.classList.remove('hidden');
+      this.micStatusText.textContent = 'Listening...';
+      this.logDiagnostic('onstart', 'Speech recognition engine active');
     };
 
     this.recognition.onspeechstart = () => {
-      this.updateMicStatus('Speech Detected', 'recording', 'Transcribing spoken words in real-time...');
-      this.logDiagnostic('onspeechstart', 'Human speech patterns detected');
+      this.micStatusText.textContent = 'Speech Detected';
+      this.logDiagnostic('onspeechstart', 'Human voice detected');
     };
 
     this.recognition.onspeechend = () => {
-      this.updateMicStatus('Processing Speech...', 'recording', 'Finalizing transcript...');
-      this.logDiagnostic('onspeechend', 'Speech segment completed');
-    };
-
-    this.recognition.onsoundend = () => {
-      this.logDiagnostic('onsoundend', 'Sound transmission ended');
-    };
-
-    this.recognition.onaudioend = () => {
-      this.logDiagnostic('onaudioend', 'Audio stream capture ended');
+      this.micStatusText.textContent = 'Processing...';
+      this.logDiagnostic('onspeechend', 'Speech segment ended');
     };
 
     this.recognition.onresult = (event) => {
       this.handleRecognitionResult(event);
-    };
-
-    this.recognition.onnomatch = (event) => {
-      this.logDiagnostic('onnomatch', 'No confident speech match found', event);
     };
 
     this.recognition.onerror = (event) => {
@@ -520,27 +805,19 @@ class STTStudioApp {
 
     this.recognition.onend = () => {
       this.logDiagnostic('onend', 'Recognition session ended');
-
       if (!this.userExplicitlyStopped && this.autoRestartToggle.checked) {
-        this.logDiagnostic('AUTO_RESTART', 'Auto-restarting speech recognition instance...');
         try {
           this.recognition.start();
         } catch (e) {
-          console.warn('Auto-restart retry:', e);
           setTimeout(() => {
             if (!this.userExplicitlyStopped) this.startRecording();
           }, 300);
         }
       } else {
-        if (this.isRecording) {
-          this.isRecording = false;
-          this.updateMicUI(false);
-          this.stopDurationTimer();
-          this.stopAudioVisualizer();
-          this.sendCurrentSessionTranscript();
-        } else if (this.userExplicitlyStopped) {
-          this.updateMicUI(false);
-        }
+        this.isRecording = false;
+        this.updateMicUI(false);
+        this.stopDurationTimer();
+        this.stopAudioVisualizer();
       }
     };
   }
@@ -548,7 +825,6 @@ class STTStudioApp {
   handleRecognitionResult(event) {
     let interimTranscript = '';
     let finalTranscriptBatch = '';
-    let latestConfidence = 0;
 
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       const result = event.results[i];
@@ -558,9 +834,7 @@ class STTStudioApp {
       if (result.isFinal) {
         finalTranscriptBatch += transcript + ' ';
         this.currentSessionText += transcript + ' ';
-        latestConfidence = confidence;
 
-        // Record segment in timeline
         const timestampStr = new Date().toLocaleTimeString();
         const segmentObj = {
           id: Date.now() + Math.random().toString(36).substr(2, 4),
@@ -574,32 +848,30 @@ class STTStudioApp {
         this.confidenceScores.push(parseFloat(segmentObj.confidence));
         this.appendTimelineCard(segmentObj);
 
-        this.logDiagnostic('onresult (FINAL)', `Committed: "${transcript.trim()}"`, {
-          confidence: segmentObj.confidence + '%',
-          alternatives: Array.from(result).map(a => ({ text: a.transcript, conf: a.confidence }))
+        this.logDiagnostic('onresult (FINAL)', `"${transcript.trim()}"`, {
+          confidence: segmentObj.confidence + '%'
         });
       } else {
         interimTranscript += transcript;
-        latestConfidence = confidence;
-        this.logDiagnostic('onresult (INTERIM)', `Stream: "${transcript}"`);
       }
     }
 
-    // Update live box
+    // Update live bar
     if (interimTranscript) {
+      this.liveVoiceStreamBar.classList.remove('hidden');
       this.liveStreamText.innerHTML = `<span class="live-interim-text">${this.escapeHTML(interimTranscript)}</span>`;
-      this.liveConfidence.textContent = 'Live Streaming...';
-      this.liveConfidence.className = 'confidence-indicator active';
+      this.liveConfidence.textContent = 'Transcribing...';
     } else if (finalTranscriptBatch) {
-      this.liveStreamText.innerHTML = `<span style="color: #6ee7b7;">✓ ${this.escapeHTML(finalTranscriptBatch)}</span>`;
+      this.liveStreamText.innerHTML = `<span>✓ ${this.escapeHTML(finalTranscriptBatch)}</span>`;
     }
 
-    // Append to textarea if final
+    // Append to chat input
     if (finalTranscriptBatch) {
-      const currentAreaText = this.finalTranscriptArea.value;
-      const separator = currentAreaText.length > 0 && !currentAreaText.endsWith(' ') ? ' ' : '';
-      this.finalTranscriptArea.value = currentAreaText + separator + finalTranscriptBatch.trim();
-      this.finalTranscriptArea.scrollTop = this.finalTranscriptArea.scrollHeight;
+      const cur = this.chatTextInput.value;
+      const sep = cur.length > 0 && !cur.endsWith(' ') ? ' ' : '';
+      this.chatTextInput.value = cur + sep + finalTranscriptBatch.trim();
+      this.adjustInputHeight();
+      this.finalTranscriptArea.value = this.chatTextInput.value;
     }
 
     this.updateMetrics();
@@ -612,35 +884,23 @@ class STTStudioApp {
     switch (event.error) {
       case 'not-allowed':
         errorMsg = 'Microphone permission denied';
-        hint = 'Please grant microphone access in your browser settings';
+        hint = 'Please grant microphone access';
         this.showToast('Microphone access denied', 'error');
         this.stopRecording();
         break;
       case 'no-speech':
         errorMsg = 'No speech detected';
-        hint = 'Ensure your microphone is close and unmuted';
         break;
       case 'network':
         errorMsg = 'Network connectivity issue';
-        hint = 'Web Speech API requires an active internet connection';
-        this.showToast('Network error in Web Speech API', 'error');
+        this.showToast('Speech API network error', 'error');
         break;
       case 'audio-capture':
         errorMsg = 'Audio capture failed';
-        hint = 'No microphone device was found or audio is busy';
-        this.showToast('Audio capture failed', 'error');
         this.stopRecording();
         break;
-      case 'aborted':
-        errorMsg = 'Recognition aborted';
-        hint = 'Session was halted';
-        break;
-      default:
-        errorMsg = `Error: ${event.error}`;
-        hint = 'An unexpected recognition error occurred';
     }
 
-    this.updateMicStatus(errorMsg, '', hint);
     this.logDiagnostic('onerror', `Error: ${event.error}`, { hint, message: event.message || '' });
   }
 
@@ -652,8 +912,8 @@ class STTStudioApp {
     card.className = 'timeline-segment-card';
     card.innerHTML = `
       <div class="segment-meta">
-        <span class="segment-time">${segment.timestamp} • [${segment.lang}]</span>
-        <span class="segment-confidence">Conf: ${segment.confidence}%</span>
+        <span>${segment.timestamp} [${segment.lang}]</span>
+        <span>Conf: ${segment.confidence}%</span>
       </div>
       <div class="segment-text">${this.escapeHTML(segment.text)}</div>
     `;
@@ -662,7 +922,7 @@ class STTStudioApp {
   }
 
   updateMetrics() {
-    const text = this.finalTranscriptArea.value.trim();
+    const text = this.chatTextInput.value.trim() || this.finalTranscriptArea.value.trim();
     const words = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
     const chars = text.length;
 
@@ -704,26 +964,15 @@ class STTStudioApp {
       this.micButton.classList.add('recording');
       this.micIcon.classList.add('hidden');
       this.micStopIcon.classList.remove('hidden');
-      this.visualizerOverlay.classList.add('recording');
     } else {
       this.micButton.classList.remove('recording');
       this.micIcon.classList.remove('hidden');
       this.micStopIcon.classList.add('hidden');
-      this.visualizerOverlay.classList.remove('recording');
-      this.updateMicStatus('Click Microphone to Start', '', 'Choose language & click to test voice input');
-    }
-  }
-
-  updateMicStatus(text, statusClass = '', hint = '') {
-    this.micStatusText.textContent = text;
-    this.micStatusText.className = `mic-status-label ${statusClass}`;
-    if (hint) {
-      this.micHintText.textContent = hint;
     }
   }
 
   // =========================================================================
-  // Web Audio API Visualizer
+  // Web Audio Visualizer
   // =========================================================================
   initCanvas() {
     const canvas = this.waveformCanvas;
@@ -735,8 +984,6 @@ class STTStudioApp {
     };
     resize();
     window.addEventListener('resize', resize);
-
-    // Draw initial idle wave
     this.drawIdleWave();
   }
 
@@ -748,8 +995,8 @@ class STTStudioApp {
 
     ctx.clearRect(0, 0, width, height);
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(37, 99, 235, 0.2)';
+    ctx.lineWidth = 1.5;
     ctx.moveTo(0, height / 2);
     ctx.lineTo(width, height / 2);
     ctx.stroke();
@@ -780,21 +1027,19 @@ class STTStudioApp {
 
         ctx.clearRect(0, 0, width, height);
 
-        // Draw frequency bars with gradient
         const barWidth = (width / bufferLength) * 2.2;
         let x = 0;
 
         for (let i = 0; i < bufferLength; i++) {
           const barHeight = (dataArray[i] / 255) * (height * 0.85);
-
           const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
-          gradient.addColorStop(0, '#6366f1');
-          gradient.addColorStop(0.5, '#06b6d4');
-          gradient.addColorStop(1, '#f43f5e');
+          gradient.addColorStop(0, '#2563eb');
+          gradient.addColorStop(0.5, '#38bdf8');
+          gradient.addColorStop(1, '#a855f7');
 
           ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.roundRect(x, height - barHeight - 4, barWidth - 1, barHeight + 4, [3, 3, 0, 0]);
+          ctx.roundRect(x, height - barHeight, barWidth - 1, barHeight, [2, 2, 0, 0]);
           ctx.fill();
 
           x += barWidth + 1.5;
@@ -802,9 +1047,9 @@ class STTStudioApp {
       };
 
       draw();
-      this.logDiagnostic('WEBAUDIO', 'Live microphone Web Audio visualizer initialized');
+      this.logDiagnostic('WEBAUDIO', 'Live mic waveform visualizer active');
     } catch (err) {
-      console.warn('Microphone visualizer stream error:', err);
+      console.warn('Microphone stream error:', err);
       this.drawIdleWave();
     }
   }
@@ -826,80 +1071,408 @@ class STTStudioApp {
   }
 
   // =========================================================================
-  // Actions & Export Helpers
+  // Chat Conversation & Intelligence Stream
   // =========================================================================
-  copyTranscript() {
-    const text = this.finalTranscriptArea.value;
-    if (!text.trim()) {
-      this.showToast('No transcript to copy');
+  sendChatMessage(messageText) {
+    if (!messageText) return;
+
+    // Switch from hero to stream
+    this.curieHeroView.classList.add('hidden');
+    this.chatMessagesStream.classList.remove('hidden');
+
+    const userMsg = {
+      id: 'msg_' + Date.now(),
+      sender: 'user',
+      text: messageText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      lang: this.selectedLanguage
+    };
+
+    this.chatMessages.push(userMsg);
+    this.renderMessageBubble(userMsg);
+
+    // Clear input
+    this.chatTextInput.value = '';
+    this.chatTextInput.style.height = 'auto';
+
+    // Dispatch to Backend API
+    this.sendCurrentSessionTranscript(true, messageText);
+
+    // Generate intelligent Assistant reply
+    this.generateAssistantReply(messageText);
+
+    this.saveSessionToStorage();
+  }
+
+  renderMessageBubble(msg, scroll = true) {
+    const row = document.createElement('div');
+    row.className = `chat-bubble-row ${msg.sender}`;
+
+    if (msg.sender === 'user') {
+      row.innerHTML = `
+        <div class="chat-bubble user">
+          <div class="bubble-content">${this.escapeHTML(msg.text)}</div>
+          <div class="bubble-meta">
+            <span>${msg.timestamp}</span>
+            <span>• [${msg.lang || 'si-LK'}]</span>
+          </div>
+        </div>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="chat-bubble assistant">
+          <div class="bubble-content">${msg.html || this.escapeHTML(msg.text)}</div>
+          <div class="bubble-actions-row">
+            <button class="bubble-btn-action tts-play-btn" data-text="${this.escapeHTML(msg.text)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+              <span>Speak</span>
+            </button>
+            <button class="bubble-btn-action copy-bubble-btn" data-text="${this.escapeHTML(msg.text)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Wire action buttons
+      row.querySelector('.tts-play-btn')?.addEventListener('click', (e) => {
+        const t = e.currentTarget.dataset.text;
+        this.speakText(t);
+      });
+      row.querySelector('.copy-bubble-btn')?.addEventListener('click', (e) => {
+        const t = e.currentTarget.dataset.text;
+        navigator.clipboard.writeText(t).then(() => this.showToast('Copied to clipboard!'));
+      });
+    }
+
+    this.chatMessagesStream.appendChild(row);
+
+    if (scroll) {
+      this.chatContentScroll.scrollTop = this.chatContentScroll.scrollHeight;
+    }
+  }
+
+  generateAssistantReply(query) {
+    const q = query.toLowerCase();
+    setTimeout(() => {
+      let replyHtml = '';
+      let replyText = '';
+
+      if (q.includes('po') || q.includes('purchase order') || q.includes('approval')) {
+        replyText = "Here are your pending Purchase Orders requiring approval. 3 POs are flagged for review.";
+        replyHtml = `
+          <p><strong>Curie CRM Intelligence:</strong> Found <strong>3 pending Purchase Orders</strong> awaiting your authorization.</p>
+          <div class="po-approval-card">
+            <div class="po-card-header">
+              <span>📋 PO #2024-884 (Cardiology Stents)</span>
+              <span class="patient-badge alert">$14,250.00</span>
+            </div>
+            <div class="po-item-row">
+              <span>Vendor: MedTech Global Inc.</span>
+              <span>Requested by: Dr. Vance</span>
+            </div>
+            <div class="po-item-row">
+              <span>Items: 20x BioMatrix Drug-Eluting Stents</span>
+              <span>Priority: High</span>
+            </div>
+            <div class="po-card-buttons">
+              <button class="btn-po-approve" onclick="window.sttStudio.showToast('PO #2024-884 Approved ✓')">Approve PO</button>
+              <button class="btn-po-details" onclick="window.sttStudio.showToast('Opening PO inspection view')">Inspect Items</button>
+            </div>
+          </div>
+          <div class="po-approval-card" style="margin-top: 0.5rem;">
+            <div class="po-card-header">
+              <span>📋 PO #2024-889 (Radiology Contrast)</span>
+              <span class="patient-badge">$3,800.00</span>
+            </div>
+            <div class="po-item-row">
+              <span>Vendor: Bayer Healthcare</span>
+              <span>Requested by: Sarah Jenkins</span>
+            </div>
+            <div class="po-card-buttons">
+              <button class="btn-po-approve" onclick="window.sttStudio.showToast('PO #2024-889 Approved ✓')">Approve PO</button>
+            </div>
+          </div>
+          <div class="po-approval-card" style="margin-top: 0.5rem;">
+            <div class="po-card-header">
+              <span>📋 PO #2024-892 (General Surgical Kits)</span>
+              <span class="patient-badge">$1,450.00</span>
+            </div>
+            <div class="po-item-row">
+              <span>Vendor: Apex Medical</span>
+              <span>Requested by: Michael Chen</span>
+            </div>
+            <div class="po-card-buttons">
+              <button class="btn-po-approve" onclick="window.sttStudio.showToast('PO #2024-892 Approved ✓')">Approve PO</button>
+            </div>
+          </div>
+        `;
+      } else if (q.includes('tackle first') || q.includes('duplicate')) {
+        replyText = "High priority items to tackle first: PO #2024-884 has a 24hr expiration window. 2 duplicate items detected on PO #2024-890.";
+        replyHtml = `
+          <p><strong>Priority Recommendations:</strong></p>
+          <ul style="margin-left: 1.25rem; margin-top: 0.5rem; font-size: 0.88rem; line-height: 1.6;">
+            <li>🔴 <strong>PO #2024-884</strong> (Cardiology): Expiring in 24 hours — requires immediate signature.</li>
+            <li>⚠️ <strong>Duplicate alert:</strong> PO #2024-890 shares 10x contrast vials with PO #2024-889.</li>
+            <li>🟢 Grouping 4 general medical supply orders saved 12% in freight costs.</li>
+          </ul>
+        `;
+      } else {
+        replyText = `Processed your inquiry regarding "${query}". Transcribed and logged under department ${this.departmentSelect.value.toUpperCase()}.`;
+        replyHtml = `<p>${replyText}</p>`;
+      }
+
+      const assistantMsg = {
+        id: 'msg_' + Date.now(),
+        sender: 'assistant',
+        text: replyText,
+        html: replyHtml,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      this.chatMessages.push(assistantMsg);
+      this.renderMessageBubble(assistantMsg);
+      this.saveSessionToStorage();
+    }, 600);
+  }
+
+  // =========================================================================
+  // API Transmission & Inspector
+  // =========================================================================
+  async sendCurrentSessionTranscript(isManual = false, overrideText = '') {
+    if (!isManual && this.apiAutoSendToggle && !this.apiAutoSendToggle.checked) {
       return;
     }
 
+    let text = overrideText || (isManual ? this.chatTextInput.value.trim() || this.finalTranscriptArea.value.trim() : this.currentSessionText.trim());
+    if (!text) return;
+
+    const refId = `crm_ref_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    const source = this.apiSourceInput ? this.apiSourceInput.value.trim() : 'CRM';
+    const payload = {
+      text: text,
+      ref_id: refId,
+      source: source,
+      language: this.selectedLanguage,
+      department: this.departmentSelect.value
+    };
+
+    const apiEndpoint = this.apiEndpointInput ? this.apiEndpointInput.value.trim() : 'http://localhost:8000/api/stt';
+    const headers = { 'Content-Type': 'application/json' };
+    const token = this.apiAuthKeyInput ? this.apiAuthKeyInput.value.trim() : '';
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const useProxy = this.apiCorsProxyToggle ? this.apiCorsProxyToggle.checked : true;
+    const isExternal = apiEndpoint.startsWith('http://') || apiEndpoint.startsWith('https://');
+
+    let requestUrl = apiEndpoint;
+    const requestHeaders = { ...headers };
+
+    if (useProxy && isExternal && !apiEndpoint.startsWith(window.location.origin)) {
+      requestUrl = '/api-proxy';
+      requestHeaders['x-target-url'] = apiEndpoint;
+    }
+
+    const startTime = performance.now();
+
+    try {
+      this.logDiagnostic('API_SEND', `Sending payload to ${apiEndpoint}`, payload);
+      let response;
+      try {
+        response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: JSON.stringify(payload)
+        });
+      } catch (fetchErr) {
+        if (!useProxy && isExternal) {
+          requestHeaders['x-target-url'] = apiEndpoint;
+          response = await fetch('/api-proxy', {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify(payload)
+          });
+        } else {
+          throw fetchErr;
+        }
+      }
+
+      const latencyMs = Math.round(performance.now() - startTime);
+      const contentType = response.headers.get('content-type') || '';
+
+      if (response.ok) {
+        let responseData = contentType.includes('application/json') ? await response.json().catch(() => null) : await response.text().catch(() => '');
+        this.renderApiResponse({
+          ok: true,
+          status: response.status,
+          statusText: response.statusText || 'OK',
+          responseData: responseData,
+          endpoint: apiEndpoint,
+          refId: refId,
+          source: source,
+          latencyMs: `${latencyMs}ms`,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      } else {
+        let errorBody = contentType.includes('application/json') ? await response.json().catch(() => null) : await response.text().catch(() => '');
+        this.renderApiResponse({
+          ok: false,
+          status: response.status,
+          statusText: response.statusText || 'Error',
+          responseData: errorBody,
+          endpoint: apiEndpoint,
+          refId: refId,
+          source: source,
+          latencyMs: `${latencyMs}ms`,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+    } catch (err) {
+      const latencyMs = Math.round(performance.now() - startTime);
+      this.renderApiResponse({
+        ok: false,
+        status: 'Error',
+        statusText: 'Connection Failed',
+        responseData: { message: err.message },
+        endpoint: apiEndpoint,
+        refId: refId,
+        source: source,
+        latencyMs: `${latencyMs}ms`,
+        timestamp: new Date().toLocaleTimeString(),
+        rawError: err.message
+      });
+    } finally {
+      if (!isManual) this.currentSessionText = '';
+    }
+  }
+
+  renderApiResponse(data) {
+    if (!data) return;
+    this.lastApiResponseData = data;
+
+    if (this.emptyApiState) this.emptyApiState.classList.add('hidden');
+    if (this.apiResultCard) this.apiResultCard.classList.remove('hidden');
+
+    const { ok, status, statusText, responseData, latencyMs, timestamp, rawError } = data;
+
+    if (this.apiResponseStatusBadge) {
+      this.apiResponseStatusBadge.className = `api-status-pill ${ok ? 'status-success' : 'status-error'}`;
+    }
+    if (this.apiResponseStatusText) {
+      this.apiResponseStatusText.textContent = `${status} ${statusText || ''}`.trim();
+    }
+    if (this.apiResponseLatency) this.apiResponseLatency.textContent = latencyMs || '0ms';
+    if (this.apiResponseTimestamp) this.apiResponseTimestamp.textContent = timestamp || new Date().toLocaleTimeString();
+
+    if (this.apiResponseBodyCode) {
+      this.apiResponseBodyCode.textContent = typeof responseData === 'object' ? JSON.stringify(responseData, null, 2) : String(responseData || rawError || 'OK');
+    }
+
+    let extractedText = '';
+    if (responseData && typeof responseData === 'object') {
+      extractedText = responseData.message || responseData.response || responseData.reply || responseData.result || responseData.text || '';
+    }
+
+    this.lastExtractedReply = extractedText;
+    if (extractedText && this.apiExtractedBox && this.apiExtractedText) {
+      this.apiExtractedBox.classList.remove('hidden');
+      this.apiExtractedText.textContent = extractedText;
+      if (this.speakApiResponseBtn) this.speakApiResponseBtn.classList.remove('hidden');
+    }
+
+    if (this.apiTabBadge) {
+      this.apiTabBadge.className = `api-badge-tag ${ok ? '' : 'status-error'}`;
+      this.apiTabBadge.textContent = String(status);
+      this.apiTabBadge.classList.remove('hidden');
+    }
+
+    this.saveSessionToStorage();
+  }
+
+  copyApiResponse() {
+    if (this.apiResponseBodyCode) {
+      navigator.clipboard.writeText(this.apiResponseBodyCode.textContent).then(() => {
+        this.showToast('API Response copied! 📋');
+      });
+    }
+  }
+
+  speakApiResponse() {
+    if (this.lastExtractedReply) {
+      this.speakText(this.lastExtractedReply);
+    }
+  }
+
+  clearApiResponse() {
+    this.lastApiResponseData = null;
+    this.lastExtractedReply = '';
+    if (this.apiResultCard) this.apiResultCard.classList.add('hidden');
+    if (this.emptyApiState) this.emptyApiState.classList.remove('hidden');
+    if (this.apiTabBadge) this.apiTabBadge.classList.add('hidden');
+    this.saveSessionToStorage();
+    this.showToast('API response cleared');
+  }
+
+  // =========================================================================
+  // Actions & Export
+  // =========================================================================
+  copyTranscript() {
+    const text = this.chatTextInput.value || this.finalTranscriptArea.value;
+    if (!text.trim()) {
+      this.showToast('No transcript text to copy');
+      return;
+    }
     navigator.clipboard.writeText(text).then(() => {
       this.showToast('Transcript copied to clipboard! 📋');
-    }).catch(err => {
-      this.showToast('Failed to copy text', 'error');
     });
   }
 
   speakTranscript() {
-    const text = this.finalTranscriptArea.value.trim();
+    const text = this.chatTextInput.value.trim() || this.finalTranscriptArea.value.trim();
     if (!text) {
       this.showToast('No text to speak');
       return;
     }
+    this.speakText(text);
+  }
 
+  speakText(text) {
     if (!('speechSynthesis' in window)) {
-      this.showToast('Text-to-Speech not supported in this browser', 'error');
+      this.showToast('TTS not supported in browser', 'error');
       return;
     }
-
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = this.selectedLanguage;
     utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    utterance.onstart = () => this.showToast('Playing TTS playback 🔊');
-    utterance.onend = () => this.showToast('Playback finished');
-    utterance.onerror = (e) => this.showToast(`TTS Error: ${e.error}`, 'error');
-
+    utterance.onstart = () => this.showToast('Playing speech synthesis 🔊');
     window.speechSynthesis.speak(utterance);
-    this.logDiagnostic('TTS_PLAYBACK', `Playing text-to-speech with lang ${this.selectedLanguage}`);
   }
 
   exportAsTxt() {
-    const text = this.finalTranscriptArea.value;
+    const text = this.chatMessages.map(m => `[${m.timestamp}] ${m.sender.toUpperCase()}: ${m.text}`).join('\n') || this.finalTranscriptArea.value;
     if (!text.trim()) {
-      this.showToast('Transcript is empty');
+      this.showToast('Chat history is empty');
       return;
     }
-    this.downloadFile(`transcript-${this.selectedLanguage}-${Date.now()}.txt`, 'text/plain', text);
-    this.showToast('Downloaded text file (.txt)');
+    this.downloadFile(`curie-chat-${this.selectedLanguage}-${Date.now()}.txt`, 'text/plain', text);
+    this.showToast('Downloaded text log (.txt)');
   }
 
   exportAsJson() {
-    if (this.segments.length === 0 && !this.finalTranscriptArea.value.trim()) {
-      this.showToast('No transcript data to export');
-      return;
-    }
-
     const payload = {
       meta: {
-        app: 'EchoNative STT Studio',
+        app: 'Curie AI Chat Studio',
         language: this.selectedLanguage,
         exportedAt: new Date().toISOString(),
-        totalWords: parseInt(this.wordCount.textContent, 10),
-        totalCharacters: parseInt(this.charCount.textContent, 10),
-        avgConfidence: this.avgConfidence.textContent
+        totalSegments: this.segments.length
       },
-      fullTranscript: this.finalTranscriptArea.value,
+      chatMessages: this.chatMessages,
       segments: this.segments
     };
-
-    const jsonStr = JSON.stringify(payload, null, 2);
-    this.downloadFile(`stt-session-${this.selectedLanguage}-${Date.now()}.json`, 'application/json', jsonStr);
-    this.showToast('Downloaded JSON session data (.json)');
+    this.downloadFile(`curie-session-${Date.now()}.json`, 'application/json', JSON.stringify(payload, null, 2));
+    this.showToast('Downloaded session JSON (.json)');
   }
 
   exportAsSrt() {
@@ -907,25 +1480,19 @@ class STTStudioApp {
       this.showToast('No timeline segments to export as SRT');
       return;
     }
-
     let srtContent = '';
-    this.segments.forEach((seg, index) => {
-      const idx = index + 1;
-      const startSec = index * 4;
-      const endSec = startSec + 3;
-
-      const formatTime = (seconds) => {
-        const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
-        const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-        const s = String(seconds % 60).padStart(2, '0');
-        return `${h}:${m}:${s},000`;
+    this.segments.forEach((seg, idx) => {
+      const s = idx * 3;
+      const e = s + 3;
+      const fmt = sec => {
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const sc = String(sec % 60).padStart(2, '0');
+        return `00:${m}:${sc},000`;
       };
-
-      srtContent += `${idx}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${seg.text}\n\n`;
+      srtContent += `${idx + 1}\n${fmt(s)} --> ${fmt(e)}\n${seg.text}\n\n`;
     });
-
-    this.downloadFile(`subtitles-${this.selectedLanguage}-${Date.now()}.srt`, 'text/plain', srtContent);
-    this.showToast('Downloaded Subtitle file (.srt)');
+    this.downloadFile(`curie-subtitles-${Date.now()}.srt`, 'text/plain', srtContent);
+    this.showToast('Downloaded Subtitles (.srt)');
   }
 
   downloadFile(filename, mimeType, content) {
@@ -941,28 +1508,26 @@ class STTStudioApp {
   }
 
   clearAll() {
-    if (this.isRecording) {
-      this.stopRecording();
-    }
+    if (this.isRecording) this.stopRecording();
+    this.chatMessages = [];
+    this.chatMessagesStream.innerHTML = '';
+    this.chatMessagesStream.classList.add('hidden');
+    this.curieHeroView.classList.remove('hidden');
+    this.chatTextInput.value = '';
     this.finalTranscriptArea.value = '';
-    this.liveStreamText.innerHTML = '<span class="placeholder-text">Speak into your microphone to see live transcription here...</span>';
-    this.liveConfidence.textContent = 'Ready';
-    this.liveConfidence.className = 'confidence-indicator';
     this.segments = [];
     this.confidenceScores = [];
     this.timelineContainer.innerHTML = `
       <div class="empty-timeline-state">
-        <p>No speech segments captured yet. Start speaking to build the timeline!</p>
+        <p>No speech segments captured yet. Speak to build timeline.</p>
       </div>
     `;
     this.updateMetrics();
     try {
-      localStorage.removeItem('echonative_stt_session');
-    } catch (e) {
-      console.warn('LocalStorage clear error:', e);
-    }
+      localStorage.removeItem('curie_ai_chat_session');
+    } catch (e) {}
     this.durationTimer.textContent = '00:00';
-    this.showToast('Transcripts cleared');
+    this.showToast('Chat & Transcripts cleared');
   }
 
   // =========================================================================
@@ -973,19 +1538,17 @@ class STTStudioApp {
     const logItem = { time, eventName, message, payload };
     this.diagnosticsLogs.unshift(logItem);
 
-    // Render in drawer
     const itemEl = document.createElement('div');
-    const eventClass = `event-${eventName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-    itemEl.className = `log-item ${eventClass}`;
+    itemEl.className = 'log-item';
 
     let payloadStr = '';
     if (payload) {
-      payloadStr = `<div class="log-payload">${this.escapeHTML(typeof payload === 'object' ? JSON.stringify(payload, null, 2) : String(payload))}</div>`;
+      payloadStr = `<pre style="margin-top: 4px; font-size: 0.68rem; color: #93c5fd;">${this.escapeHTML(typeof payload === 'object' ? JSON.stringify(payload, null, 2) : String(payload))}</pre>`;
     }
 
     itemEl.innerHTML = `
       <div class="log-meta">
-        <span class="log-event-name">[${this.escapeHTML(eventName)}]</span>
+        <span>[${this.escapeHTML(eventName)}]</span>
         <span>${time}</span>
       </div>
       <div class="log-msg">${this.escapeHTML(message)}</div>
@@ -994,122 +1557,16 @@ class STTStudioApp {
 
     this.eventLogsList.prepend(itemEl);
     this.logCountBadge.textContent = this.diagnosticsLogs.length;
+    this.logCountBadge.classList.remove('hidden');
   }
 
   showToast(message, type = 'info') {
     this.toastMessage.textContent = message;
-    this.toastNotification.className = `toast ${type === 'error' ? 'btn-danger-soft' : ''}`;
     this.toastNotification.classList.remove('hidden');
 
     setTimeout(() => {
       this.toastNotification.classList.add('hidden');
     }, 3200);
-  }
-
-  generateRefId() {
-    const timestamp = Date.now();
-    const rand = Math.floor(10000 + Math.random() * 90000);
-    return `crm_ref_${timestamp}_${rand}`;
-  }
-
-  async sendCurrentSessionTranscript(isManual = false) {
-    // If auto-sending (isManual === false) and auto-send toggle is turned off, skip it
-    if (!isManual && this.apiAutoSendToggle && !this.apiAutoSendToggle.checked) {
-      this.logDiagnostic('API_SEND_SKIP', 'Auto-send is disabled by toggle.');
-      return;
-    }
-
-    // Determine target text: manual send sends editor contents, auto-send sends recorded session
-    let text = '';
-    if (isManual) {
-      text = this.finalTranscriptArea.value ? this.finalTranscriptArea.value.trim() : '';
-    } else {
-      text = this.currentSessionText ? this.currentSessionText.trim() : '';
-      // Fallback to final transcript area if session text is empty but final text exists
-      if (!text && this.finalTranscriptArea.value) {
-        text = this.finalTranscriptArea.value.trim();
-      }
-    }
-
-    if (!text) {
-      this.logDiagnostic('API_SEND_SKIP', 'No transcript text to send to API.');
-      this.showToast('No transcript text to send', 'info');
-      return;
-    }
-
-    const refId = this.generateRefId();
-    const source = this.apiSourceInput ? this.apiSourceInput.value.trim() : 'CRM';
-    const payload = {
-      text: text,
-      ref_id: refId,
-      source: source
-    };
-
-    const apiEndpoint = this.apiEndpointInput ? this.apiEndpointInput.value.trim() : 'http://localhost:8000/api/stt';
-
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-
-    const token = this.apiAuthKeyInput ? this.apiAuthKeyInput.value.trim() : '';
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    console.log('%c[API Request] Details:', 'color: #8b5cf6; font-weight: bold;');
-    console.log('URL:', apiEndpoint);
-    console.log('Headers:', headers);
-    console.log('Payload:', payload);
-    console.table(payload);
-
-    this.logDiagnostic('API_SEND_PAYLOAD', 'Preparing to send formatted payload to API', payload);
-
-    try {
-      this.showToast(`Sending to API (Ref: ${refId})...`);
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        let responseData;
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          responseData = await response.json().catch(() => null);
-        } else {
-          responseData = await response.text().catch(() => '');
-        }
-        console.log('%c[API Response] Success:', 'color: #10b981; font-weight: bold;');
-        console.log(responseData);
-        this.showToast(`API success! Transcript sent.`, 'success');
-        this.logDiagnostic('API_SEND_SUCCESS', 'API request succeeded', {
-          status: response.status,
-          statusText: response.statusText,
-          response: responseData
-        });
-      } else {
-        const errorText = await response.text().catch(() => '');
-        console.error('%c[API Response] Error:', 'color: #f43f5e; font-weight: bold;', response.status);
-        console.log(errorText);
-        this.showToast(`API error: ${response.status}`, 'error');
-        this.logDiagnostic('API_SEND_ERROR', `API returned status ${response.status}`, {
-          status: response.status,
-          statusText: response.statusText,
-          errorBody: errorText
-        });
-      }
-    } catch (err) {
-      console.error('%c[API Fetch Exception] Failed to connect:', 'color: #f43f5e; font-weight: bold;', err);
-      this.showToast(`Failed to connect to API`, 'error');
-      this.logDiagnostic('API_SEND_EXCEPTION', `Fetch failed: ${err.message}`, {
-        error: err.stack || err.message
-      });
-    }
-
-    if (!isManual) {
-      this.currentSessionText = '';
-    }
   }
 
   escapeHTML(str) {
@@ -1126,5 +1583,5 @@ class STTStudioApp {
 
 // Instantiate on load
 document.addEventListener('DOMContentLoaded', () => {
-  window.sttStudio = new STTStudioApp();
+  window.sttStudio = new CurieChatApp();
 });

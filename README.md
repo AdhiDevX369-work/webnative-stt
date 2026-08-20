@@ -48,6 +48,11 @@ It leverages the browser's built-in `window.SpeechRecognition` (or `webkitSpeech
     - 🎬 **SubRip Subtitles (`.srt`)** with calculated timecodes
     - 🔊 **Native TTS Playback** using `window.speechSynthesis`
 
+- **🔗 Automated API Integration & Live Response Viewer**:
+  - Configurable backend endpoint URL (e.g. `http://localhost:8000/api/stt`), Bearer Token authentication, and Source identifier.
+  - Auto-send on recording stop or manual transmission via **"Send API"** button.
+  - **Live API Result Viewer Tab & Quick Notification Bar**: Displays response status code (`200 OK`, `4xx`, `5xx`), round-trip latency (`ms`), timestamp, request reference ID (`ref_id`), formatted JSON/Text syntax viewer, and extracted AI/backend replies with TTS playback.
+
 - **🛠️ Developer Diagnostics Drawer**:
   - Real-time event monitor logging all Web Speech API lifecycle events (`onstart`, `onaudiostart`, `onspeechstart`, `onspeechend`, `onresult`, `onnomatch`, `onerror`, `onend`).
   - Inspect raw payload structures, alternatives, confidence levels, and error diagnostics.
