@@ -82,6 +82,7 @@ class STTStudioApp {
     this.visualizerToggle = document.getElementById('visualizerToggle');
     this.apiEndpointInput = document.getElementById('apiEndpointInput');
     this.apiAuthKeyInput = document.getElementById('apiAuthKeyInput');
+    this.apiRefIdInput = document.getElementById('apiRefIdInput');
     this.apiAutoSendToggle = document.getElementById('apiAutoSendToggle');
     this.apiSourceInput = document.getElementById('apiSourceInput');
     this.sendToApiBtn = document.getElementById('sendToApiBtn');
@@ -234,6 +235,7 @@ class STTStudioApp {
         apiAuthKey: this.apiAuthKeyInput ? this.apiAuthKeyInput.value : '',
         apiAutoSend: this.apiAutoSendToggle ? this.apiAutoSendToggle.checked : true,
         apiSource: this.apiSourceInput ? this.apiSourceInput.value : 'CRM',
+        apiRefId: this.apiRefIdInput ? this.apiRefIdInput.value : '',
         updatedAt: Date.now()
       };
       localStorage.setItem('echonative_stt_session', JSON.stringify(data));
@@ -271,6 +273,9 @@ class STTStudioApp {
       }
       if (data.apiSource && this.apiSourceInput) {
         this.apiSourceInput.value = data.apiSource;
+      }
+      if (data.apiRefId !== undefined && this.apiRefIdInput) {
+        this.apiRefIdInput.value = data.apiRefId;
       }
       this.updateMetrics();
     } catch (e) {
@@ -352,6 +357,11 @@ class STTStudioApp {
     }
     if (this.apiSourceInput) {
       this.apiSourceInput.addEventListener('input', () => {
+        this.saveSessionToStorage();
+      });
+    }
+    if (this.apiRefIdInput) {
+      this.apiRefIdInput.addEventListener('input', () => {
         this.saveSessionToStorage();
       });
     }
@@ -1037,7 +1047,10 @@ class STTStudioApp {
       return;
     }
 
-    const refId = this.generateRefId();
+    let refId = this.apiRefIdInput ? this.apiRefIdInput.value.trim() : '';
+    if (!refId) {
+      refId = this.generateRefId();
+    }
     const source = this.apiSourceInput ? this.apiSourceInput.value.trim() : 'CRM';
     const payload = {
       text: text,
