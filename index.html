@@ -141,6 +141,49 @@
           </div>
         </div>
 
+        <!-- API Integration Setting -->
+        <div class="setting-group" style="margin-top: 1rem; margin-bottom: 0.5rem;">
+          <label class="setting-label">
+            <span>API STT Endpoint</span>
+            <span class="badge-tag" style="background: rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.3); color: #67e8f9;">POST</span>
+          </label>
+          <div class="select-wrapper">
+            <input type="text" id="apiEndpointInput" class="custom-select" style="background-image: none; padding-right: 1rem; font-family: 'JetBrains Mono', monospace;" value="http://localhost:8000/api/stt" placeholder="http://localhost:8000/api/stt" />
+          </div>
+        </div>
+
+        <!-- API Authorization Key -->
+        <div class="setting-group" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <label class="setting-label">
+            <span>Authorization Key (Bearer Token)</span>
+          </label>
+          <div class="select-wrapper">
+            <input type="text" id="apiAuthKeyInput" class="custom-select" style="background-image: none; padding-right: 1rem; font-family: 'JetBrains Mono', monospace;" value="" placeholder="Enter bearer token..." />
+          </div>
+        </div>
+
+        <!-- API Configuration Additional Options -->
+        <div class="settings-grid" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">Auto-Send on Stop</span>
+              <span class="setting-desc">Send to API when recording ends</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="apiAutoSendToggle" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-info">
+              <span class="setting-title">API Source</span>
+              <span class="setting-desc">Identifier label</span>
+            </div>
+            <input type="text" id="apiSourceInput" class="custom-select" value="CRM" style="background-image: none; width: 60px; padding: 0.3rem; text-align: center; font-size: 0.8rem; font-family: 'Outfit', sans-serif;" />
+          </div>
+        </div>
+
         <!-- Hero Mic Interaction Station -->
         <div class="mic-station">
           <div class="visualizer-container">
@@ -222,6 +265,13 @@
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
               </svg>
               <span>Speak</span>
+            </button>
+            <button id="sendToApiBtn" class="btn btn-secondary btn-sm" title="Send Transcript to API" style="border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.1); color: #a5b4fc;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              <span>Send API</span>
             </button>
             <div class="dropdown-wrapper">
               <button id="exportDropdownBtn" class="btn btn-secondary btn-sm">

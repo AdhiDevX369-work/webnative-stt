@@ -34,6 +34,7 @@ class STTStudioApp {
     this.isRecording = false;
     this.userExplicitlyStopped = true;
     this.selectedLanguage = 'si-LK';
+    this.currentSessionText = '';
 
     // State metrics
     this.sessionStartTime = null;
@@ -79,6 +80,11 @@ class STTStudioApp {
     this.interimToggle = document.getElementById('interimToggle');
     this.autoRestartToggle = document.getElementById('autoRestartToggle');
     this.visualizerToggle = document.getElementById('visualizerToggle');
+    this.apiEndpointInput = document.getElementById('apiEndpointInput');
+    this.apiAuthKeyInput = document.getElementById('apiAuthKeyInput');
+    this.apiAutoSendToggle = document.getElementById('apiAutoSendToggle');
+    this.apiSourceInput = document.getElementById('apiSourceInput');
+    this.sendToApiBtn = document.getElementById('sendToApiBtn');
 
     // Hero Station
     this.micButton = document.getElementById('micButton');
@@ -224,6 +230,10 @@ class STTStudioApp {
         finalText: this.finalTranscriptArea.value,
         segments: this.segments,
         confidenceScores: this.confidenceScores,
+        apiEndpoint: this.apiEndpointInput ? this.apiEndpointInput.value : 'http://localhost:8000/api/stt',
+        apiAuthKey: this.apiAuthKeyInput ? this.apiAuthKeyInput.value : '',
+        apiAutoSend: this.apiAutoSendToggle ? this.apiAutoSendToggle.checked : true,
+        apiSource: this.apiSourceInput ? this.apiSourceInput.value : 'CRM',
         updatedAt: Date.now()
       };
       localStorage.setItem('echonative_stt_session', JSON.stringify(data));
@@ -249,6 +259,18 @@ class STTStudioApp {
       }
       if (data.language) {
         this.setLanguage(data.language);
+      }
+      if (data.apiEndpoint && this.apiEndpointInput) {
+        this.apiEndpointInput.value = data.apiEndpoint;
+      }
+      if (data.apiAuthKey !== undefined && this.apiAuthKeyInput) {
+        this.apiAuthKeyInput.value = data.apiAuthKey;
+      }
+      if (data.apiAutoSend !== undefined && this.apiAutoSendToggle) {
+        this.apiAutoSendToggle.checked = data.apiAutoSend;
+      }
+      if (data.apiSource && this.apiSourceInput) {
+        this.apiSourceInput.value = data.apiSource;
       }
       this.updateMetrics();
     } catch (e) {
@@ -312,6 +334,32 @@ class STTStudioApp {
     this.finalTranscriptArea.addEventListener('input', () => {
       this.updateMetrics();
     });
+
+    if (this.apiEndpointInput) {
+      this.apiEndpointInput.addEventListener('input', () => {
+        this.saveSessionToStorage();
+      });
+    }
+    if (this.apiAuthKeyInput) {
+      this.apiAuthKeyInput.addEventListener('input', () => {
+        this.saveSessionToStorage();
+      });
+    }
+    if (this.apiAutoSendToggle) {
+      this.apiAutoSendToggle.addEventListener('change', () => {
+        this.saveSessionToStorage();
+      });
+    }
+    if (this.apiSourceInput) {
+      this.apiSourceInput.addEventListener('input', () => {
+        this.saveSessionToStorage();
+      });
+    }
+    if (this.sendToApiBtn) {
+      this.sendToApiBtn.addEventListener('click', () => {
+        this.sendCurrentSessionTranscript(true);
+      });
+    }
 
     // Diagnostics Drawer
     this.toggleDiagnosticsBtn.addEventListener('click', () => {
@@ -386,6 +434,7 @@ class STTStudioApp {
 
       this.attachRecognitionEvents();
       this.userExplicitlyStopped = false;
+      this.currentSessionText = '';
       this.recognition.start();
 
       this.isRecording = true;
@@ -422,6 +471,7 @@ class STTStudioApp {
     this.liveConfidence.textContent = 'Idle';
     this.liveConfidence.className = 'confidence-indicator';
     this.logDiagnostic('USER_STOP', 'User explicitly stopped recording');
+    this.sendCurrentSessionTranscript();
   }
 
   attachRecognitionEvents() {
@@ -481,8 +531,16 @@ class STTStudioApp {
             if (!this.userExplicitlyStopped) this.startRecording();
           }, 300);
         }
-      } else if (this.userExplicitlyStopped) {
-        this.updateMicUI(false);
+      } else {
+        if (this.isRecording) {
+          this.isRecording = false;
+          this.updateMicUI(false);
+          this.stopDurationTimer();
+          this.stopAudioVisualizer();
+          this.sendCurrentSessionTranscript();
+        } else if (this.userExplicitlyStopped) {
+          this.updateMicUI(false);
+        }
       }
     };
   }
@@ -499,6 +557,7 @@ class STTStudioApp {
 
       if (result.isFinal) {
         finalTranscriptBatch += transcript + ' ';
+        this.currentSessionText += transcript + ' ';
         latestConfidence = confidence;
 
         // Record segment in timeline
@@ -945,6 +1004,112 @@ class STTStudioApp {
     setTimeout(() => {
       this.toastNotification.classList.add('hidden');
     }, 3200);
+  }
+
+  generateRefId() {
+    const timestamp = Date.now();
+    const rand = Math.floor(10000 + Math.random() * 90000);
+    return `crm_ref_${timestamp}_${rand}`;
+  }
+
+  async sendCurrentSessionTranscript(isManual = false) {
+    // If auto-sending (isManual === false) and auto-send toggle is turned off, skip it
+    if (!isManual && this.apiAutoSendToggle && !this.apiAutoSendToggle.checked) {
+      this.logDiagnostic('API_SEND_SKIP', 'Auto-send is disabled by toggle.');
+      return;
+    }
+
+    // Determine target text: manual send sends editor contents, auto-send sends recorded session
+    let text = '';
+    if (isManual) {
+      text = this.finalTranscriptArea.value ? this.finalTranscriptArea.value.trim() : '';
+    } else {
+      text = this.currentSessionText ? this.currentSessionText.trim() : '';
+      // Fallback to final transcript area if session text is empty but final text exists
+      if (!text && this.finalTranscriptArea.value) {
+        text = this.finalTranscriptArea.value.trim();
+      }
+    }
+
+    if (!text) {
+      this.logDiagnostic('API_SEND_SKIP', 'No transcript text to send to API.');
+      this.showToast('No transcript text to send', 'info');
+      return;
+    }
+
+    const refId = this.generateRefId();
+    const source = this.apiSourceInput ? this.apiSourceInput.value.trim() : 'CRM';
+    const payload = {
+      text: text,
+      ref_id: refId,
+      source: source
+    };
+
+    const apiEndpoint = this.apiEndpointInput ? this.apiEndpointInput.value.trim() : 'http://localhost:8000/api/stt';
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    const token = this.apiAuthKeyInput ? this.apiAuthKeyInput.value.trim() : '';
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    console.log('%c[API Request] Details:', 'color: #8b5cf6; font-weight: bold;');
+    console.log('URL:', apiEndpoint);
+    console.log('Headers:', headers);
+    console.log('Payload:', payload);
+    console.table(payload);
+
+    this.logDiagnostic('API_SEND_PAYLOAD', 'Preparing to send formatted payload to API', payload);
+
+    try {
+      this.showToast(`Sending to API (Ref: ${refId})...`);
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        let responseData;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          responseData = await response.json().catch(() => null);
+        } else {
+          responseData = await response.text().catch(() => '');
+        }
+        console.log('%c[API Response] Success:', 'color: #10b981; font-weight: bold;');
+        console.log(responseData);
+        this.showToast(`API success! Transcript sent.`, 'success');
+        this.logDiagnostic('API_SEND_SUCCESS', 'API request succeeded', {
+          status: response.status,
+          statusText: response.statusText,
+          response: responseData
+        });
+      } else {
+        const errorText = await response.text().catch(() => '');
+        console.error('%c[API Response] Error:', 'color: #f43f5e; font-weight: bold;', response.status);
+        console.log(errorText);
+        this.showToast(`API error: ${response.status}`, 'error');
+        this.logDiagnostic('API_SEND_ERROR', `API returned status ${response.status}`, {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+      }
+    } catch (err) {
+      console.error('%c[API Fetch Exception] Failed to connect:', 'color: #f43f5e; font-weight: bold;', err);
+      this.showToast(`Failed to connect to API`, 'error');
+      this.logDiagnostic('API_SEND_EXCEPTION', `Fetch failed: ${err.message}`, {
+        error: err.stack || err.message
+      });
+    }
+
+    if (!isManual) {
+      this.currentSessionText = '';
+    }
   }
 
   escapeHTML(str) {
